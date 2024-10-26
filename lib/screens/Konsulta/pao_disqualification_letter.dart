@@ -10,8 +10,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'dart:ui' as ui;
 import 'form_state_provider.dart';
 import 'progress_bar.dart';
@@ -101,31 +99,36 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final formStateProvider = Provider.of<FormStateProvider>(context);
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.black,
+                  fontSize: screenWidth * 0.055,
+                  fontWeight: FontWeight.bold),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
@@ -142,59 +145,86 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                     child: CustomProgressBar(currentStep: 5, totalSteps: 6),
                   ),
                   const SizedBox(height: 20),
-                  const Center(
+                  Center(
                     child: Text(
                       'Disqualification Letter from PAO',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: screenWidth * 0.05,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const Center(
+                  Center(
                     child: Text(
                       '(Attach your Disqualification Letter from PAO)',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: screenWidth * 0.035,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   GestureDetector(
                     onTap: () => _pickImage(context),
-                    child: Container(
-                      height: 300,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(10),
-                        image: formStateProvider.paoSelectedImage != null
-                            ? DecorationImage(
-                                image: formStateProvider.paoSelectedImage!,
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: formStateProvider.paoSelectedImage == null
-                          ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.cloud_upload_outlined,
-                                  size: 100,
-                                  color: Colors.grey,
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 300,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(10),
+                            image: formStateProvider.paoSelectedImage != null
+                                ? DecorationImage(
+                                    image: formStateProvider.paoSelectedImage!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: formStateProvider.paoSelectedImage == null
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.cloud_upload_outlined,
+                                      size: 100,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'I-click para piliin ang mga image files na nais mong i-upload.',
+                                      style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                          color: Colors.black),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    Text(
+                                      '(Click to select the image files you wish to upload.)',
+                                      style: TextStyle(
+                                          fontSize: screenWidth * 0.035,
+                                          color: Colors.grey),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                        if (formStateProvider.paoSelectedImage != null)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: Colors.white,
+                                  size: 50,
                                 ),
-                                SizedBox(height: 10),
-                                Text(
-                                  'I-click para piliin ang mga image files na nais mong i-upload.',
-                                  style: TextStyle(color: Colors.black),
-                                  textAlign: TextAlign.center,
-                                ),
-                                Text(
-                                  '(Click to select the image files you wish to upload.)',
-                                  style: TextStyle(color: Colors.grey),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            )
-                          : null,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -204,25 +234,31 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_outline, color: Colors.grey),
-                        SizedBox(width: 10),
+                        const Icon(Icons.lock_outline, color: Colors.grey),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Sineseryoso namin ang mga isyu sa privacy. Maaari kang makasiguro na ang iyong personal na data ay ligtas na nakaprotekta.',
-                            style: TextStyle(color: Colors.black),
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.04,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Center(
+                  Center(
                     child: Text(
                       'We take privacy issues seriously. You can be sure that your personal data is safely protected.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.035,
+                        color: Colors.grey,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -238,7 +274,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                           });
                         },
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -246,15 +282,15 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                               'Naiintindihan ko ang mga katanungan at aking pinanunumpaan ang aking mga kasagutan at mga ibinigay na mga dokumento ay totoo at wasto.',
                               style: TextStyle(
                                 color: Colors.blue,
-                                fontSize: 16,
+                                fontSize: screenWidth * 0.04,
                               ),
                             ),
-                            SizedBox(height: 5),
+                            const SizedBox(height: 5),
                             Text(
                               '(I fully understood all questions asked in this form and swear on the truth and veracity of my answers, and documents provided are true and correct.)',
                               style: TextStyle(
                                 color: Colors.grey,
-                                fontSize: 14,
+                                fontSize: screenWidth * 0.035,
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -269,6 +305,9 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 55),
                         backgroundColor: const Color(0xFF580049),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () async {
                         if (formStateProvider.paoSelectedImage == null) {
@@ -326,29 +365,28 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
                           ),
                         );
                       },
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text.rich(
                             TextSpan(
                               text: 'Isumite ',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: screenWidth * 0.045,
                                 color: Colors.white,
                               ),
-                              children: <TextSpan>[
+                              children: const <TextSpan>[
                                 TextSpan(
                                   text: '(Submit)',
                                   style: TextStyle(
-                                    fontSize: 18,
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(width: 5),
-                          Icon(
+                          const SizedBox(width: 5),
+                          const Icon(
                             Icons.arrow_forward,
                             color: Colors.white,
                           ),
@@ -381,31 +419,39 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
     final controlNumber = generateControlNumber();
     formStateProvider.setControlNumber(controlNumber);
 
+    final fullName = formStateProvider.fullName
+        .replaceAll(' ', ''); // Remove spaces from full name
+
     final userDoc = FirebaseFirestore.instance
         .collection('appointments')
         .doc(controlNumber);
+    final usersDoc =
+        FirebaseFirestore.instance.collection('users').doc(user.uid);
     final now = DateTime.now();
-    final String datetime = DateFormat('yyyyMMdd_HHmmss').format(now);
     final storageRef = FirebaseStorage.instance
         .ref()
-        .child('konsulta_user_uploads/${user.uid}/$datetime');
+        .child('konsulta_user_uploads/${user.uid}/$controlNumber/');
 
     try {
       // Upload images to Firebase Storage
       final barangayImageUrl = await _uploadImage(
           storageRef,
-          'barangayCertificateOfIndigency',
+          '${fullName}_${controlNumber}_barangayCertificateOfIndigency',
           formStateProvider.barangaySelectedImage);
-      final dswdImageUrl = await _uploadImage(storageRef,
-          'dswdCertificateOfIndigency', formStateProvider.dswdSelectedImage);
-      final paoImageUrl = await _uploadImage(storageRef,
-          'paoDisqualificationLetter', formStateProvider.paoSelectedImage);
+      final dswdImageUrl = await _uploadImage(
+          storageRef,
+          '${fullName}_${controlNumber}_dswdCertificateOfIndigency',
+          formStateProvider.dswdSelectedImage);
+      final paoImageUrl = await _uploadImage(
+          storageRef,
+          '${fullName}_${controlNumber}_paoDisqualificationLetter',
+          formStateProvider.paoSelectedImage);
 
       // Generate QR code image URL
       final qrCodeImageUrl =
           await _generateQrCodeImageUrl(controlNumber, storageRef);
 
-      // Save form data to Firestore
+      // Save form data to the appointments collection in Firestore
       await userDoc.set({
         'applicantProfile': {
           'uid': user.uid,
@@ -422,7 +468,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         'appointmentDetails': {
           'appointmentStatus': 'pending',
           'controlNumber': controlNumber,
-          'apptType': 'Online',
+          'apptType': '',
           'createdDate': FieldValue.serverTimestamp(),
           'updatedTime': FieldValue.serverTimestamp(),
           'read': 'false',
@@ -448,12 +494,23 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         },
       });
 
+      await usersDoc.set({
+        'dob': formStateProvider.dob,
+        'phone': formStateProvider.contactNumber,
+        'gender': formStateProvider.selectedGender,
+        'spouse': formStateProvider.spouseName,
+        'spouseOccupation': formStateProvider.spouseOccupation,
+        'city': formStateProvider.city,
+        'updated_time': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)); // Merge with existing data if any
+
       // Notify the current user
       await _sendNotification(
         uid: user.uid,
         message:
-            'Your appointment request with Ticket Number $controlNumber has been submitted successfully. Please wait for the confirmation of the date and time of consultation.',
+            'Your appointment request with Ticket Number $controlNumber has been submitted successfully. Please wait for the confirmation of the date and type of appointment.',
         type: 'appointment',
+        controlNumber: controlNumber,
       );
 
       // Notify head lawyers
@@ -468,22 +525,12 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
           message:
               'A new appointment request has been submitted by ${formStateProvider.fullName} with Ticket Number $controlNumber and is awaiting your approval.',
           type: 'appointment',
+          controlNumber: controlNumber,
         );
       }
 
-      // Hide loading indicator
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Show success message and navigate to KonsultaSubmit
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Form submitted successfully'),
-        ),
-      );
-
-      Navigator.push(
+      // Navigate to KonsultaSubmit page after successful form submission
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => KonsultaSubmit(
@@ -491,11 +538,15 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
           ),
         ),
       );
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
 
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Form submitted successfully'),
+        ),
+      );
+    } catch (e) {
+      // Show error message and stop loading if an error occurs
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit form: $e')),
       );
@@ -507,6 +558,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
     String? memberType,
     required String message,
     required String type,
+    required String controlNumber,
   }) async {
     final notificationDoc =
         FirebaseFirestore.instance.collection('notifications').doc();
@@ -518,6 +570,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
       'type': type,
       'read': false,
       'timestamp': FieldValue.serverTimestamp(),
+      'controlNumber': controlNumber
     });
   }
 

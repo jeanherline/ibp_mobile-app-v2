@@ -7,11 +7,14 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class EditProfile extends StatefulWidget {
+  const EditProfile({super.key});
+
   @override
   _EditProfileState createState() => _EditProfileState();
 }
 
 class _EditProfileState extends State<EditProfile> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -27,6 +30,9 @@ class _EditProfileState extends State<EditProfile> {
   String _selectedGender = 'Male';
   File? _imageFile;
   bool _isUploading = false;
+  bool _hasChanges = false;
+
+  Map<String, dynamic> _originalData = {};
 
   @override
   void initState() {
@@ -45,7 +51,7 @@ class _EditProfileState extends State<EditProfile> {
 
       if (data != null) {
         setState(() {
-          _photoUrl = data['photo_url'] ?? 'https://via.placeholder.com/150';
+          _photoUrl = data['photo_url'] ?? '';
           _displayNameController.text = data['display_name'] ?? '';
           _middleNameController.text = data['middle_name'] ?? '';
           _lastNameController.text = data['last_name'] ?? '';
@@ -59,9 +65,53 @@ class _EditProfileState extends State<EditProfile> {
           _selectedGender = data['gender'] ?? 'Male';
           _spouseController.text = data['spouse'] ?? '';
           _spouseOccupationController.text = data['spouseOccupation'] ?? '';
+
+          _originalData = {
+            'photo_url': _photoUrl,
+            'display_name': _displayNameController.text,
+            'middle_name': _middleNameController.text,
+            'last_name': _lastNameController.text,
+            'dob': _dobController.text,
+            'phone': _phoneController.text,
+            'gender': _selectedGender,
+            'spouse': _spouseController.text,
+            'spouseOccupation': _spouseOccupationController.text,
+            'city': _selectedCity,
+          };
+          _hasChanges = false; // Initially disable the button
         });
       }
     }
+  }
+
+  void _checkForChanges() {
+    // This method will now check every single field, including the image selection
+    Map<String, dynamic> updatedData = {
+      'photo_url':
+          _imageFile != null ? 'new_image' : _photoUrl, // Track new image
+      'display_name': _displayNameController.text,
+      'middle_name': _middleNameController.text,
+      'last_name': _lastNameController.text,
+      'dob': _dobController.text,
+      'phone': _phoneController.text,
+      'gender': _selectedGender,
+      'spouse': _spouseController.text,
+      'spouseOccupation': _spouseOccupationController.text,
+      'city': _selectedCity,
+    };
+
+    setState(() {
+      _hasChanges =
+          !_mapEquals(_originalData, updatedData) || _imageFile != null;
+    });
+  }
+
+  bool _mapEquals(Map<String, dynamic> map1, Map<String, dynamic> map2) {
+    if (map1.length != map2.length) return false;
+    for (String key in map1.keys) {
+      if (map1[key] != map2[key]) return false;
+    }
+    return true;
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -76,6 +126,7 @@ class _EditProfileState extends State<EditProfile> {
       setState(() {
         _selectedDate = picked;
         _dobController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _checkForChanges();
       });
     }
   }
@@ -83,10 +134,10 @@ class _EditProfileState extends State<EditProfile> {
   Future<void> _pickImage() async {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
-
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
+        _checkForChanges(); // Enable save button instantly after selecting image
       });
     }
   }
@@ -99,255 +150,286 @@ class _EditProfileState extends State<EditProfile> {
       setState(() {
         _isUploading = true;
       });
-
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('profile_images')
-          .child(user.uid + '.jpg');
-
       try {
-        // Log upload start
-        print('Starting image upload...');
+        final now = DateTime.now();
+        final timestamp =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
 
-        // Upload file to Firebase Storage
+        final storageRef = FirebaseStorage.instance.ref().child(
+            'profile_images/${user.uid}/profileImage_$timestamp.png'); // Path with timestamp and folder structure
+
         await storageRef.putFile(_imageFile!);
-
-        // Log upload completion
-        print('Image upload completed.');
-
-        final photoUrl = await storageRef.getDownloadURL();
-
+        _photoUrl = await storageRef.getDownloadURL();
         setState(() {
-          _photoUrl = photoUrl;
           _isUploading = false;
-          _imageFile = null; // Clear the local file after upload
+          _imageFile = null; // Clear local image file
         });
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
-          'photo_url': _photoUrl,
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image uploaded successfully')),
-        );
       } catch (e) {
         setState(() {
           _isUploading = false;
         });
-
-        print('Image upload failed: $e'); // Log error
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload image')),
+          const SnackBar(content: Text('Failed to upload image')),
         );
       }
     }
   }
 
   ImageProvider _getImageProvider() {
-    if (_isUploading) {
-      return const AssetImage(
-          'assets/images/loading.gif'); // Show a loading gif or image
-    } else if (_imageFile != null) {
-      return FileImage(_imageFile!);
-    } else if (_photoUrl.isNotEmpty && !_photoUrl.startsWith('blob:')) {
+    if (_imageFile != null) {
+      return FileImage(_imageFile!); // Preview the selected image
+    } else if (_photoUrl.isNotEmpty) {
       return NetworkImage(_photoUrl);
     } else {
-      return const NetworkImage(
-          'https://as2.ftcdn.net/v2/jpg/03/49/49/79/1000_F_349497933_Ly4im8BDmHLaLzgyKg2f2yZOvJjBtlw5.jpg');
+      return const AssetImage('assets/img/DefaultUserImage.jpg');
     }
+  }
+
+  String? _validatePhoneNumber(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your phone number';
+    }
+    const pattern = r'^(09\d{9}|\+639\d{9})$';
+    if (!RegExp(pattern).hasMatch(value)) {
+      return 'Please enter a valid PH phone number';
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Edit Profile'),
-        backgroundColor: Colors.blueAccent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: const Text('Edit Profile'),
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            // Profile picture
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: _getImageProvider(),
-                ),
-                InkWell(
-                  onTap: _pickImage,
-                  child: CircleAvatar(
-                    radius: 15,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.edit, size: 15, color: Colors.black),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            // Display Name
-            TextFormField(
-              controller: _displayNameController,
-              decoration: InputDecoration(
-                labelText: 'First Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Middle Name
-            TextFormField(
-              controller: _middleNameController,
-              decoration: InputDecoration(
-                labelText: 'Middle Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Last Name
-            TextFormField(
-              controller: _lastNameController,
-              decoration: InputDecoration(
-                labelText: 'Last Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Date of Birth
-            TextFormField(
-              controller: _dobController,
-              decoration: InputDecoration(
-                labelText: 'Date of Birth',
-                border: OutlineInputBorder(),
-                suffixIcon: Icon(Icons.calendar_today),
-              ),
-              readOnly: true,
-              onTap: () => _selectDate(context),
-            ),
-            SizedBox(height: 20),
-            // Phone Number
-            TextFormField(
-              controller: _phoneController,
-              decoration: InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Gender
-            DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: InputDecoration(
-                labelText: 'Gender',
-                border: OutlineInputBorder(),
-              ),
-              items: ['Male', 'Female', 'Other'].map((String gender) {
-                return DropdownMenuItem<String>(
-                  value: gender,
-                  child: Text(gender),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedGender = newValue!;
-                });
-              },
-            ),
-            SizedBox(height: 20),
-            // Spouse Name
-            TextFormField(
-              controller: _spouseController,
-              decoration: InputDecoration(
-                labelText: 'Spouse Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Spouse Occupation
-            TextFormField(
-              controller: _spouseOccupationController,
-              decoration: InputDecoration(
-                labelText: 'Spouse Occupation',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            // City
-            DropdownButtonFormField<String>(
-              value: _selectedCity,
-              decoration: InputDecoration(
-                labelText: 'City',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                'Angat',
-                'Balagtas',
-                'Baliuag',
-                'Bocaue',
-                'Bulakan',
-                'Bustos',
-                'Calumpit',
-                'Doña Remedios Trinidad',
-                'Guiguinto',
-                'Hagonoy',
-                'Marilao',
-                'Norzagaray',
-                'Obando',
-                'Pandi',
-                'Paombong',
-                'Plaridel',
-                'Pulilan',
-                'San Ildefonso',
-                'San Miguel',
-                'San Rafael',
-                'Santa Maria',
-              ].map((String city) {
-                return DropdownMenuItem<String>(
-                  value: city,
-                  child: Text(city),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedCity = newValue!;
-                });
-              },
-            ),
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                // Save profile changes
-                await _uploadImage();
-                await _saveProfile();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF580049),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 55),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+        child: Form(
+          key: _formKey,
+          onChanged: _checkForChanges,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Stack(
+                alignment: Alignment.bottomRight,
                 children: [
-                  Text(
-                    'Save Changes',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  CircleAvatar(
+                    radius: screenWidth * 0.18, // Slightly smaller avatar
+                    backgroundImage: _getImageProvider(),
+                    backgroundColor: const Color(0xFFF5F5F5),
                   ),
-                  SizedBox(width: 10), // Add some space between text and icon
-                  Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
+                  InkWell(
+                    onTap: _pickImage,
+                    child: const CircleAvatar(
+                      radius:
+                          20, // Decrease the radius to make the background circle smaller
+                      backgroundColor: Color(0xFF580049),
+                      child: Icon(Icons.edit,
+                          size: 18,
+                          color:
+                              Colors.white), // Adjust the icon size as needed
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              _buildTextField('First Name', _displayNameController),
+              _buildTextField('Middle Name', _middleNameController),
+              _buildTextField('Last Name', _lastNameController),
+              _buildDateField('Date of Birth', _dobController, context),
+              _buildPhoneField('Phone Number', _phoneController),
+              _buildDropdown(
+                'Gender',
+                _selectedGender,
+                ['Male', 'Female', 'Other'],
+                (newValue) {
+                  setState(() {
+                    _selectedGender = newValue!;
+                    _checkForChanges();
+                  });
+                },
+              ),
+              _buildTextField('Spouse Name', _spouseController),
+              _buildTextField('Spouse Occupation', _spouseOccupationController),
+              _buildDropdown(
+                'City',
+                _selectedCity,
+                [
+                  'Angat',
+                  'Balagtas',
+                  'Baliuag',
+                  'Bocaue',
+                  'Bulakan',
+                  'Bustos',
+                  'Calumpit',
+                  'Doña Remedios Trinidad',
+                  'Guiguinto',
+                  'Hagonoy',
+                  'Marilao',
+                  'Norzagaray',
+                  'Obando',
+                  'Pandi',
+                  'Paombong',
+                  'Plaridel',
+                  'Pulilan',
+                  'San Ildefonso',
+                  'San Miguel',
+                  'San Rafael',
+                  'Santa Maria',
+                ],
+                (newValue) {
+                  setState(() {
+                    _selectedCity = newValue!;
+                    _checkForChanges();
+                  });
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildSaveButton(),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextFormField(
+        controller: controller,
+        onChanged: (value) {
+          _checkForChanges();
+        },
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF5F5F5), // Light gray fill for consistency
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        onChanged: (value) {
+          _checkForChanges();
+        },
+        validator: _validatePhoneNumber,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF5F5F5),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateField(
+      String label, TextEditingController controller, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF5F5F5),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.calendar_today, color: Color(0xFF580049)),
+            onPressed: () => _selectDate(context),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+        readOnly: true,
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> items,
+      ValueChanged<String?> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF5F5F5),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+        items: items.map((String item) {
+          return DropdownMenuItem<String>(
+            value: item,
+            child: Text(item),
+          );
+        }).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return ElevatedButton(
+      onPressed: _hasChanges && _formKey.currentState?.validate() == true
+          ? () async {
+              await _uploadImage(); // Upload image if selected
+              await _saveProfile(); // Save the profile
+            }
+          : null, // Disable button if no changes or invalid input
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF580049),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        minimumSize: const Size(
+            double.infinity, 50), // Full width button with proper size
+      ),
+      child: const Text(
+        'Save Changes',
+        style: TextStyle(
+            fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -376,51 +458,32 @@ class _EditProfileState extends State<EditProfile> {
         'photo_url': _photoUrl,
       };
 
-      // Detect changes and map to user-friendly labels
-      Map<String, String> fieldLabels = {
-        'display_name': 'First Name',
-        'middle_name': 'Middle Name',
-        'last_name': 'Last Name',
-        'dob': 'Date of Birth',
-        'phone': 'Phone Number',
-        'gender': 'Gender',
-        'spouse': 'Spouse Name',
-        'spouseOccupation': 'Spouse\'s Occupation',
-        'city': 'City',
-        'photo_url': 'Profile Picture',
-      };
-
-      List<String> changes = [];
-      updatedData.forEach((key, value) {
-        if (data[key] != value) {
-          changes.add(fieldLabels[key] ?? key);
-        }
-      });
-
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .update(updatedData);
 
-      await _sendNotification(user.uid, changes);
+      _originalData = updatedData; // Reset original data after saving
+      _checkForChanges();
+
+      await _sendProfileUpdateNotification(user.uid);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully')),
+        const SnackBar(content: Text('Profile updated successfully')),
       );
     }
   }
 
-  Future<void> _sendNotification(String uid, List<String> changes) async {
+  Future<void> _sendProfileUpdateNotification(String uid) async {
     final notificationDoc =
         FirebaseFirestore.instance.collection('notifications').doc();
 
-    String changeMessage =
-        'Your profile has been updated successfully. Changes: ${changes.join(', ')}.';
+    String message = 'Your profile has been successfully updated.';
 
     await notificationDoc.set({
       'notifId': notificationDoc.id,
       'uid': uid,
-      'message': changeMessage,
+      'message': message,
       'type': 'profile_update',
       'read': false,
       'timestamp': FieldValue.serverTimestamp(),

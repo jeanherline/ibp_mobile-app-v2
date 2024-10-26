@@ -5,8 +5,7 @@ class CustomProgressBar extends StatelessWidget {
   final int totalSteps;
 
   const CustomProgressBar(
-      {required this.currentStep, required this.totalSteps, Key? key})
-      : super(key: key);
+      {required this.currentStep, required this.totalSteps, super.key});
 
   @override
   Widget build(BuildContext context) {

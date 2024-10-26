@@ -36,6 +36,8 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -46,25 +48,30 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const Home(),
+                builder: (context) => const Home(
+                  activeIndex: 0,
+                ),
               ),
             );
           },
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
                 color: Colors.black,
-                fontSize: 20,
+                fontSize: screenWidth * 0.055,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
@@ -79,76 +86,68 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
-                const Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Maraming Salamat!',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Maraming Salamat!',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.05,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(width: 8), // Add some space between the texts
-                      Text(
-                        '(Thank you very much!)',
-                        style: TextStyle(
-                          fontSize: 14, // Set the font size to 14
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'MUNTING PAALALA:',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      SizedBox(width: 8), // Add some space between the texts
-                      Text(
-                        '(Reminder)',
-                        style: TextStyle(
-                          fontSize: 14, // Set the font size to 14
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Center(
-                  child: Text(
-                    'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at dalhin ang mga hard copy ng mga dokumentong ipinasa online sakaling maaprubahan ang inyong appointment.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '(Thank you very much!)',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.035,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                const Center(
-                  child: Text(
-                    '(Please wait for the confirmation of the date and time of consultation. Do not forget to save the QR Code and bring hard copies of the documents submitted online in case your appointment is approved.)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'PAALALA:',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.045,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
+                    const SizedBox(width: 8),
+                    Text(
+                      '(Reminder)',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.035,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at i-handa ang mga hard copy ng mga dokumentong ipinasa online sakaling maaprubahan ang inyong appointment.',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    color: Colors.black,
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '(Please wait for the confirmation of the date and type of consultation. Do not forget to save the QR Code and prepare the hard copies of the documents submitted online in case your appointment is approved.)',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 30),
                 Container(
@@ -168,20 +167,26 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                       const SizedBox(height: 10),
                       Text(
                         'TICKET #${widget.controlNumber}',
-                        style: const TextStyle(
-                          fontSize: 18,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.045,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
-                      const Text(
-                        'Nakabinbing Kahilingan (Pending Request)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                          fontStyle: FontStyle.italic,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 12, 122, 17),
+                          borderRadius: BorderRadius.circular(5),
                         ),
-                        textAlign: TextAlign.center,
+                        child: const Text(
+                          'Pending Request',
+                          style: TextStyle(
+                            color: Colors.white, // White text
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       const Text(
@@ -230,27 +235,30 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Row(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(Icons.lock_outline, color: Colors.grey),
-                      SizedBox(width: 10),
+                      const Icon(Icons.lock_outline, color: Colors.grey),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Sineseryoso namin ang mga isyu sa privacy. Maaari kang makasiguro na ang iyong personal na data ay ligtas na nakaprotekta.',
-                          style: TextStyle(color: Colors.black),
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Center(
+                Center(
                   child: Text(
                     'We take privacy issues seriously. You can be sure that your personal data is safely protected.',
                     style: TextStyle(
+                      fontSize: screenWidth * 0.035,
                       color: Colors.grey,
-                      fontSize: 14,
                       fontStyle: FontStyle.italic,
                     ),
                     textAlign: TextAlign.center,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:ibp_app_ver2/screens/Appointments/appointmentDetails.dart';
 import 'package:ibp_app_ver2/screens/Notifications/notifications.dart';
+import 'package:ibp_app_ver2/screens/Settings/settings.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'package:ibp_app_ver2/screens/Konsulta/form_state_provider.dart';
@@ -45,12 +46,17 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => SplashScreen(),
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const Login(),
         '/signup': (context) => const SignUp(),
-        '/home': (context) => const Home(),
-        '/profile': (context) => const Profile(),
-        '/edit_profile': (context) => EditProfile(),
+        '/home': (context) => const Home(
+              activeIndex: 0,
+            ),
+        '/profile': (context) => const Profile(
+              activeIndex: 3,
+            ),
+        '/edit_profile': (context) => const EditProfile(),
+        '/settings': (context) => const SettingsPage(),
         '/applicant_profile': (context) => const ApplicantProfile(),
         '/employment_profile': (context) => const EmploymentProfile(),
         '/nature_of_legal_assistance_requested': (context) =>
@@ -61,7 +67,9 @@ class MyApp extends StatelessWidget {
             const DSWDCertificateOfIndigency(),
         '/pao_disqualification_letter': (context) =>
             const PAODisqualificationLetter(),
-        '/notifications': (context) => Notifications(),
+        '/notifications': (context) => const Notifications(
+              activeIndex: 2,
+            ),
         '/appointmentDetails': (context) => const AppointmentDetails(
               controlNumber: '',
             ),

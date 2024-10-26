@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'form_state_provider.dart';
 import 'nature_of_legal_assitance_requested.dart';
-import 'progress_bar.dart'; // Import the custom progress bar widget
+import 'progress_bar.dart';
 
 class EmploymentProfile extends StatefulWidget {
-  const EmploymentProfile({Key? key}) : super(key: key);
+  const EmploymentProfile({super.key});
 
   @override
   _EmploymentProfileState createState() => _EmploymentProfileState();
@@ -21,7 +21,6 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
   final TextEditingController _monthlyIncomeController =
       TextEditingController();
 
-  // Define dropdown options for "Klase ng Trabaho"
   final List<String> employmentOptions = [
     'Lokal na Trabaho (Local Employer/Agency)',
     'Dayuhang Amo (Foreign Employer)',
@@ -39,8 +38,6 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
     _employerNameController.text = formState.employerName;
     _employerAddressController.text = formState.employerAddress;
     _monthlyIncomeController.text = formState.monthlyIncome;
-
-    // Ensure _selectedEmploymentOption is set to a valid option or null
     _selectedEmploymentOption = formState.kindOfEmployment.isNotEmpty &&
             employmentOptions.contains(formState.kindOfEmployment)
         ? formState.kindOfEmployment
@@ -49,33 +46,38 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            // Save the current text values when navigating back
             _saveTextValues();
             Navigator.of(context).pop();
           },
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
                   color: Colors.black,
-                  fontSize: 20,
+                  fontSize: screenWidth * 0.055,
                   fontWeight: FontWeight.bold),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
@@ -85,24 +87,29 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
             key: _formKey,
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 10),
                   const Center(
                     child: CustomProgressBar(currentStep: 1, totalSteps: 6),
                   ),
                   const SizedBox(height: 20),
-                  const Center(
+                  Center(
                     child: Text(
                       'Impormasyon patungkol sa Trabaho',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.05,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const Center(
+                  Center(
                     child: Text(
                       '(Employment Profile, if any)',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: screenWidth * 0.035,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -112,6 +119,7 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                     _occupationController,
                     'Ilagay ang hanapbuhay (Enter occupation)',
                     true,
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildDropdownField(
@@ -126,6 +134,7 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                         _selectedEmploymentOption = newValue;
                       });
                     },
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -134,6 +143,7 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                     _employerNameController,
                     'Ilagay ang pangalan ng amo (Enter employer’s name)',
                     false,
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -142,6 +152,7 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                     _employerAddressController,
                     'Ilagay ang adres o tinitirahan ng amo (Enter employer’s address)',
                     false,
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildNumberField(
@@ -150,6 +161,7 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                     _monthlyIncomeController,
                     'Ilagay ang buwanang sahod ng buong pamilya (Enter family’s monthly income)',
                     true,
+                    screenWidth,
                   ),
                   const SizedBox(height: 30),
                   Center(
@@ -157,10 +169,12 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 55),
                         backgroundColor: const Color(0xFF580049),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
-                          // Save the current text values before navigating forward
                           _saveTextValues();
                           Navigator.push(
                             context,
@@ -171,30 +185,28 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                           );
                         }
                       },
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text.rich(
                             TextSpan(
                               text: 'Sunod ',
-                              style:
-                                  TextStyle(fontSize: 18, color: Colors.white),
-                              children: <TextSpan>[
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.045,
+                                color: Colors.white,
+                              ),
+                              children: const <TextSpan>[
                                 TextSpan(
                                   text: '(Next)',
                                   style: TextStyle(
-                                      fontSize: 18,
-                                      fontStyle: FontStyle.italic),
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(
-                              width: 5), // Add some space between text and icon
-                          Icon(
-                            Icons.arrow_forward,
-                            color: Colors.white,
-                          ),
+                          const SizedBox(width: 5),
+                          const Icon(Icons.arrow_forward, color: Colors.white),
                         ],
                       ),
                     ),
@@ -210,7 +222,6 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
   }
 
   void _saveTextValues() {
-    // Save the current text values
     final formState = context.read<FormStateProvider>();
     formState.updateEmploymentProfile(
       occupation: _occupationController.text,
@@ -221,39 +232,32 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
     );
   }
 
-  Widget _buildTextField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildTextField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(
-                fontSize: 15, fontStyle: FontStyle.italic, color: Colors.grey),
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           validator: isRequired
@@ -269,39 +273,32 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
     );
   }
 
-  Widget _buildNumberField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildNumberField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(
-                fontSize: 15, fontStyle: FontStyle.italic, color: Colors.grey),
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           keyboardType: TextInputType.number,
@@ -329,27 +326,12 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
     String hintText,
     bool isRequired,
     ValueChanged<String?> onChanged,
+    double screenWidth,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: selectedItem,
@@ -363,13 +345,20 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(
-                fontSize: 15, fontStyle: FontStyle.italic, color: Colors.grey),
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14.0,
+              horizontal: 12.0,
+            ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
+          isExpanded: true, // Ensures the dropdown expands to the full width
           validator: isRequired
               ? (value) {
                   if (value == null || value.isEmpty) {
@@ -380,6 +369,30 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
               : null,
         ),
       ],
+    );
+  }
+
+  Widget _buildLabel(
+      String label, String subLabel, bool isRequired, double screenWidth) {
+    return RichText(
+      text: TextSpan(
+        text: '$label ',
+        style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.045),
+        children: [
+          TextSpan(
+            text: '($subLabel)',
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: screenWidth * 0.04,
+            ),
+          ),
+          if (isRequired)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(color: Colors.red),
+            ),
+        ],
+      ),
     );
   }
 }

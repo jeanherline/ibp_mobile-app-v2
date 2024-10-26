@@ -88,31 +88,36 @@ class _BarangayCertificateOfIndigencyState
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final formStateProvider = Provider.of<FormStateProvider>(context);
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.black,
+                  fontSize: screenWidth * 0.055,
+                  fontWeight: FontWeight.bold),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
@@ -129,59 +134,88 @@ class _BarangayCertificateOfIndigencyState
                     child: CustomProgressBar(currentStep: 3, totalSteps: 6),
                   ),
                   const SizedBox(height: 20),
-                  const Center(
+                  Center(
                     child: Text(
                       'Certificate of Indigency from Barangay',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: screenWidth * 0.05,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const Center(
+                  Center(
                     child: Text(
                       '(Attach your Certificate of Indigency from Barangay)',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: screenWidth * 0.035,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   GestureDetector(
                     onTap: () => _pickImage(context),
-                    child: Container(
-                      height: 300,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(10),
-                        image: formStateProvider.barangaySelectedImage != null
-                            ? DecorationImage(
-                                image: formStateProvider.barangaySelectedImage!,
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: formStateProvider.barangaySelectedImage == null
-                          ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.cloud_upload_outlined,
-                                  size: 100,
-                                  color: Colors.grey,
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 300,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(10),
+                            image:
+                                formStateProvider.barangaySelectedImage != null
+                                    ? DecorationImage(
+                                        image: formStateProvider
+                                            .barangaySelectedImage!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                          ),
+                          child: formStateProvider.barangaySelectedImage == null
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.cloud_upload_outlined,
+                                      size: 100,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'I-click para piliin ang mga image files na nais mong i-upload.',
+                                      style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                          color: Colors.black),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    Text(
+                                      '(Click to select the image files you wish to upload.)',
+                                      style: TextStyle(
+                                          fontSize: screenWidth * 0.035,
+                                          color: Colors.grey),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                        if (formStateProvider.barangaySelectedImage != null)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: Colors.white,
+                                  size: 50,
                                 ),
-                                SizedBox(height: 10),
-                                Text(
-                                  'I-click para piliin ang mga image files na nais mong i-upload.',
-                                  style: TextStyle(color: Colors.black),
-                                  textAlign: TextAlign.center,
-                                ),
-                                Text(
-                                  '(Click to select the image files you wish to upload.)',
-                                  style: TextStyle(color: Colors.grey),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            )
-                          : null,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -191,25 +225,31 @@ class _BarangayCertificateOfIndigencyState
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_outline, color: Colors.grey),
-                        SizedBox(width: 10),
+                        const Icon(Icons.lock_outline, color: Colors.grey),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Sineseryoso namin ang mga isyu sa privacy. Maaari kang makasiguro na ang iyong personal na data ay ligtas na nakaprotekta.',
-                            style: TextStyle(color: Colors.black),
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.04,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Center(
+                  Center(
                     child: Text(
                       'We take privacy issues seriously. You can be sure that your personal data is safely protected.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.035,
+                        color: Colors.grey,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -219,6 +259,9 @@ class _BarangayCertificateOfIndigencyState
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 55),
                         backgroundColor: const Color(0xFF580049),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
@@ -241,29 +284,28 @@ class _BarangayCertificateOfIndigencyState
                           );
                         }
                       },
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text.rich(
                             TextSpan(
                               text: 'Sunod ',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: screenWidth * 0.045,
                                 color: Colors.white,
                               ),
-                              children: <TextSpan>[
+                              children: const <TextSpan>[
                                 TextSpan(
                                   text: '(Next)',
                                   style: TextStyle(
-                                    fontSize: 18,
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(width: 5),
-                          Icon(
+                          const SizedBox(width: 5),
+                          const Icon(
                             Icons.arrow_forward,
                             color: Colors.white,
                           ),

@@ -6,9 +6,10 @@ import 'package:ibp_app_ver2/screens/chat_screen.dart';
 import 'package:ibp_app_ver2/screens/laws_jurisprudence.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:ibp_app_ver2/navbar.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  const Home({super.key, required int activeIndex});
 
   @override
   _HomeState createState() => _HomeState();
@@ -89,7 +90,8 @@ class _HomeState extends State<Home> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          contentPadding: const EdgeInsets.all(8.0),
+          contentPadding: const EdgeInsets.all(
+              16.0), // Added more padding for better spacing
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -101,11 +103,41 @@ class _HomeState extends State<Home> {
                 },
               ),
               Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: _userQrCode.isNotEmpty
-                      ? Image.network(_userQrCode)
-                      : const Text('No QR code available.'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: _userQrCode.isNotEmpty
+                          ? Image.network(_userQrCode)
+                          : const Text('No QR code available.'),
+                    ),
+                    const SizedBox(
+                        height:
+                            20), // Increased space between the QR code and the text
+                    const Text(
+                      'This is your personal QR code.', // First line bold
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color.fromARGB(
+                            255, 0, 0, 0), // Lighter color for a softer tone
+                        fontWeight: FontWeight.bold, // Bold for emphasis
+                      ),
+                    ),
+                    const SizedBox(height: 5), // Space between two lines
+                    const Text(
+                      'Show this to the front desk when you walk into the IBP office.', // Second line
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF5A5A5A), // Same lighter color
+                        fontStyle: FontStyle.italic, // Italic style
+                        fontWeight:
+                            FontWeight.w400, // Light weight for soft tone
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -168,13 +200,17 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen size to ensure responsiveness
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: const Color(0xFF580049),
       appBar: AppBar(
         backgroundColor: const Color(0xFF580049),
         automaticallyImplyLeading: false,
         elevation: 0,
-        leadingWidth: 150,
+        leadingWidth: screenWidth * 0.4, // Responsive leading width
         leading: GestureDetector(
           onTap: () {
             _showQrCodeModal(context);
@@ -184,9 +220,9 @@ class _HomeState extends State<Home> {
             child: Row(
               children: [
                 const Icon(Icons.qr_code, color: Colors.white),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: const Text(
+                SizedBox(width: screenWidth * 0.02), // Responsive spacing
+                const Expanded(
+                  child: Text(
                     'Personal QR',
                     style: TextStyle(color: Colors.white),
                     overflow: TextOverflow.ellipsis,
@@ -213,30 +249,36 @@ class _HomeState extends State<Home> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.fromLTRB(30, 10, 30, 10),
+                    padding: EdgeInsets.fromLTRB(
+                      screenWidth * 0.08,
+                      10,
+                      screenWidth * 0.08,
+                      10,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        AutoSizeText(
                           'Magandang Araw, $_firstName',
                           style: const TextStyle(
                               color: Colors.white, fontSize: 18),
+                          maxLines: 1, // Adjust text size
                         ),
-                        const Text(
+                        const AutoSizeText(
                           'Kumusta Ka?',
                           style: TextStyle(color: Colors.white, fontSize: 31),
+                          maxLines: 1, // Adjust text size
                         ),
                       ],
                     ),
                   ),
                   SizedBox(
-                    height: 200,
+                    height: screenHeight * 0.25, // Adjust based on screen size
                     child: PageView(
                       controller: _pageController,
                       children: [
                         _buildPageItem(
-                          title:
-                              '|  Mag-book ng appointment para sa Legal Aid:',
+                          title: '|  Mag-book ng appointment:',
                           description:
                               'Mag-book ng inyong mga appointment online gamit ang aming bagong scheduling module! Pinadadali nito ang proseso sa pamamagitan ng pagbibigay ng malinaw na impormasyon tungkol sa mga kinakailangan.',
                           color: const Color(0xFF221F1F),
@@ -248,7 +290,7 @@ class _HomeState extends State<Home> {
                           color: const Color(0xFFB73CA8),
                         ),
                         _buildPageItem(
-                          title: '|  Palawakin ang kaalaman gamit ang Jur.ph:',
+                          title: '|  Palawakin ang kaalaman:',
                           description:
                               'Gamitin ang Jur.ph sa aming IBP ELSA app! Makakakuha kayo ng access sa mahahalagang legal na impormasyon at resources. Kasama na rito ang case digests, summaries, jurisprudence, at mga batas.',
                           color: const Color.fromARGB(255, 201, 175, 6),
@@ -307,7 +349,7 @@ class _HomeState extends State<Home> {
                             ),
                             _buildIconOption(
                               icon: FontAwesomeIcons.solidNewspaper,
-                              label: 'Batas at Hurisprudensiya',
+                              label: 'Mga Batas',
                               onTap: () {
                                 _showDisclaimerModal(context);
                               },
@@ -319,7 +361,7 @@ class _HomeState extends State<Home> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
+                                    builder: (context) => CustomerSupportPage(
                                       displayName: _displayName,
                                       middleName: _middleName,
                                       lastName: _lastName,
@@ -401,7 +443,9 @@ class _HomeState extends State<Home> {
                     topRight: Radius.circular(20),
                   ),
                 ),
-                child: const CustomNavigationBar(),
+                child: const CustomNavigationBar(
+                  activeIndex: 0, // Ensure this shows the active home tab
+                ),
               ),
             ),
           ],
@@ -434,7 +478,10 @@ class _HomeState extends State<Home> {
             ),
           ),
           const SizedBox(height: 5),
-          Text(description, style: const TextStyle(color: Colors.white)),
+          Text(
+            description,
+            style: const TextStyle(color: Colors.white),
+          ),
         ],
       ),
     );

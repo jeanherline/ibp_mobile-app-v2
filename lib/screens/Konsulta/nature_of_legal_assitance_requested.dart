@@ -43,29 +43,34 @@ class _NatureOfLegalAssistanceRequestedState
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
                   color: Colors.black,
-                  fontSize: 20,
+                  fontSize: screenWidth * 0.055,
                   fontWeight: FontWeight.bold),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
@@ -75,18 +80,20 @@ class _NatureOfLegalAssistanceRequestedState
             key: _formKey,
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 10),
                   const Center(
                     child: CustomProgressBar(currentStep: 2, totalSteps: 6),
                   ),
                   const SizedBox(height: 20),
-                  const Center(
+                  Center(
                     child: Text(
                       'Nature of Legal Assistance Requested',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.05,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -102,6 +109,7 @@ class _NatureOfLegalAssistanceRequestedState
                         _selectedAssistanceType = value;
                       });
                     },
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildTextAreaField(
@@ -110,6 +118,7 @@ class _NatureOfLegalAssistanceRequestedState
                     _problemsController,
                     'Ilagay ang iyong problema (Enter your problem/s or complaint/s)',
                     true,
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildTextAreaField(
@@ -118,6 +127,7 @@ class _NatureOfLegalAssistanceRequestedState
                     _problemReasonController,
                     'Ilagay ang dahilan ng problema (Enter the reason why or how the problem/s arise)',
                     true,
+                    screenWidth,
                   ),
                   const SizedBox(height: 20),
                   _buildTextAreaField(
@@ -126,6 +136,7 @@ class _NatureOfLegalAssistanceRequestedState
                     _desiredSolutionsController,
                     'Ilagay ang mga maaaring solusyon (Enter the possible solution/s would you like)',
                     true,
+                    screenWidth,
                   ),
                   const SizedBox(height: 30),
                   Center(
@@ -133,6 +144,9 @@ class _NatureOfLegalAssistanceRequestedState
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 55),
                         backgroundColor: const Color(0xFF580049),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
@@ -155,30 +169,28 @@ class _NatureOfLegalAssistanceRequestedState
                           );
                         }
                       },
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text.rich(
                             TextSpan(
                               text: 'Sunod ',
-                              style:
-                                  TextStyle(fontSize: 18, color: Colors.white),
-                              children: <TextSpan>[
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.045,
+                                color: Colors.white,
+                              ),
+                              children: const <TextSpan>[
                                 TextSpan(
                                   text: '(Next)',
                                   style: TextStyle(
-                                      fontSize: 18,
-                                      fontStyle: FontStyle.italic),
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(
-                              width: 5), // Add some space between text and icon
-                          Icon(
-                            Icons.arrow_forward,
-                            color: Colors.white,
-                          ),
+                          const SizedBox(width: 5),
+                          const Icon(Icons.arrow_forward, color: Colors.white),
                         ],
                       ),
                     ),
@@ -201,6 +213,7 @@ class _NatureOfLegalAssistanceRequestedState
     String hintText,
     bool isRequired,
     ValueChanged<String?> onChanged,
+    double screenWidth,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,11 +221,15 @@ class _NatureOfLegalAssistanceRequestedState
         RichText(
           text: TextSpan(
             text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
+            style:
+                TextStyle(color: Colors.black, fontSize: screenWidth * 0.045),
             children: [
               TextSpan(
                 text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: screenWidth * 0.04,
+                ),
               ),
               if (isRequired)
                 const TextSpan(
@@ -225,20 +242,22 @@ class _NatureOfLegalAssistanceRequestedState
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            return Container(
+            return SizedBox(
               width: constraints.maxWidth,
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
                 decoration: InputDecoration(
                   hintText: hintText,
                   hintStyle: const TextStyle(
-                      fontSize: 15,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey),
+                    fontSize: 15,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(
-                      vertical: 18.0, horizontal: 10.0),
+                      vertical: 18.0, horizontal: 12.0),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.grey),
                   ),
                 ),
                 items: items.map((item) {
@@ -274,6 +293,7 @@ class _NatureOfLegalAssistanceRequestedState
     TextEditingController controller,
     String hintText,
     bool isRequired,
+    double screenWidth,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,11 +301,15 @@ class _NatureOfLegalAssistanceRequestedState
         RichText(
           text: TextSpan(
             text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
+            style:
+                TextStyle(color: Colors.black, fontSize: screenWidth * 0.045),
             children: [
               TextSpan(
                 text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: screenWidth * 0.04,
+                ),
               ),
               if (isRequired)
                 const TextSpan(
@@ -302,11 +326,15 @@ class _NatureOfLegalAssistanceRequestedState
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: const TextStyle(
-                fontSize: 15, fontStyle: FontStyle.italic, color: Colors.grey),
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           validator: isRequired

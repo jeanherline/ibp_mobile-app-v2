@@ -44,7 +44,6 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
           .doc(user.uid)
           .get();
       if (userData.exists) {
-        print("User data fetched: ${userData.data()}");
         setState(() {
           String displayName = userData['display_name'] ?? '';
           String middleName = userData['middle_name'] ?? '';
@@ -67,198 +66,216 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
           _selectedGender = userData['gender'] ?? '';
           _spouseNameController.text = userData['spouse'] ?? '';
           _spouseOccupationController.text = userData['spouseOccupation'] ?? '';
-          _addressController.text = userData['city'] ?? '';
+          _addressController.text = '';
           _selectedCity = userData['city'] ?? '';
         });
-      } else {
-        print("No user data found for UID: ${user.uid}");
       }
-    } else {
-      print("No authenticated user found.");
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
               'Isumite ang Suliraning Legal',
               style: TextStyle(
                   color: Colors.black,
-                  fontSize: 20,
+                  fontSize: screenWidth * 0.055, // Responsive font size
                   fontWeight: FontWeight.bold),
             ),
             Text(
               '(Submit your legal problem)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(
+                color: Colors.black87, // Darkened for better visibility
+                fontSize: screenWidth * 0.035, // Responsive font size
+              ),
             ),
           ],
         ),
-        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 10),
-                  const Center(
-                    child: CustomProgressBar(currentStep: 0, totalSteps: 6),
-                  ),
-                  const SizedBox(height: 20),
-                  const Center(
-                    child: Text(
-                      'Applicant\'s Profile',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        child: Container(
+          color: Colors.white, // Set the container background to white
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 10),
+                    const Center(
+                      child: CustomProgressBar(currentStep: 0, totalSteps: 6),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    'Buong Pangalan',
-                    'Full Name',
-                    _fullNameController,
-                    'Ilagay ang buong pangalan (Enter full name)',
-                    true,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildDateField(
-                    'Araw ng Kapanganakan',
-                    'Date of Birth',
-                    _dobController,
-                    'Ilagay ang araw ng kapanganakan (Enter date of birth)',
-                    true,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    'Adres o Tinitirahan',
-                    'Street Address',
-                    _addressController,
-                    'Ilagay ang adres o tinitirahan (Enter full address)',
-                    true,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildCityDropdownField(),
-                  const SizedBox(height: 20),
-                  _buildNumberField(
-                    'Numero ng Telepono',
-                    'Contact Number',
-                    _contactNumberController,
-                    'Ilagay ang numero ng telepono (Enter contact number)',
-                    true,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildDropdownField(
-                    'Kasarian',
-                    'Gender',
-                    ['Male', 'Female', 'Other'],
-                    _selectedGender,
-                    'Piliin ang kasarian (Choose gender)',
-                    true,
-                    (value) {
-                      setState(() {
-                        _selectedGender = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    'Pangalan ng Asawa',
-                    'Name of Spouse',
-                    _spouseNameController,
-                    'Ilagay ang pangalan ng asawa (Enter spouse’s name)',
-                    false,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    'Trabaho ng Asawa',
-                    'Occupation of Spouse',
-                    _spouseOccupationController,
-                    'Ilagay ang trabaho ng asawa (Enter spouse’s occupation)',
-                    false,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextAreaField(
-                    'Kung kasal, ilagay ang pangalan ng mga anak at edad nila',
-                    'If married, write name of children and age',
-                    _childrenNamesAgesController,
-                    'Ilagay ang pangalan at edad ng mga anak\n(Enter children’s name and age)',
-                    false,
-                  ),
-                  const SizedBox(height: 30),
-                  Center(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 55),
-                        backgroundColor: const Color(0xFF580049),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        'Applicant\'s Profile',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.05,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          // Save form state
-                          final formState = context.read<FormStateProvider>();
-                          formState.updateApplicantProfile(
-                            fullName: _fullNameController.text,
-                            dob: _dobController.text,
-                            address: _addressController.text,
-                            city: _selectedCity ?? '',
-                            contactNumber: _contactNumberController.text,
-                            selectedGender: _selectedGender ?? '',
-                            spouseName: _spouseNameController.text,
-                            spouseOccupation: _spouseOccupationController.text,
-                            childrenNamesAges:
-                                _childrenNamesAgesController.text,
-                          );
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EmploymentProfile(),
-                            ),
-                          );
-                        }
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      'Buong Pangalan',
+                      'Full Name',
+                      _fullNameController,
+                      'Ilagay ang buong pangalan (Enter full name)',
+                      true,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildDateField(
+                      'Araw ng Kapanganakan',
+                      'Date of Birth',
+                      _dobController,
+                      'Ilagay ang araw ng kapanganakan (Enter date of birth)',
+                      true,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      'Adres o Tinitirahan',
+                      'Street Address',
+                      _addressController,
+                      'Ilagay ang adres o tinitirahan (Enter full address)',
+                      true,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildCityDropdownField(screenWidth),
+                    const SizedBox(height: 20),
+                    _buildNumberField(
+                      'Numero ng Telepono',
+                      'Contact Number',
+                      _contactNumberController,
+                      'Ilagay ang numero ng telepono (Enter contact number)',
+                      true,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildDropdownField(
+                      'Kasarian',
+                      'Gender',
+                      ['Male', 'Female', 'Other'],
+                      _selectedGender,
+                      'Piliin ang kasarian (Choose gender)',
+                      true,
+                      (value) {
+                        setState(() {
+                          _selectedGender = value;
+                        });
                       },
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text.rich(
-                            TextSpan(
-                              text: 'Sunod ',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                              ),
-                              children: <TextSpan>[
-                                TextSpan(
-                                  text: '(Next)',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      'Pangalan ng Asawa',
+                      'Name of Spouse',
+                      _spouseNameController,
+                      'Ilagay ang pangalan ng asawa (Enter spouse’s name)',
+                      false,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      'Trabaho ng Asawa',
+                      'Occupation of Spouse',
+                      _spouseOccupationController,
+                      'Ilagay ang trabaho ng asawa (Enter spouse’s occupation)',
+                      false,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextAreaField(
+                      'Kung kasal, ilagay ang pangalan ng mga anak at edad nila',
+                      'If married, write name of children and age',
+                      _childrenNamesAgesController,
+                      'Ilagay ang pangalan at edad ng mga anak\n(Enter children’s name and age)',
+                      false,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 30),
+                    Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 55),
+                          backgroundColor: const Color(0xFF580049),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          SizedBox(width: 5),
-                          Icon(Icons.arrow_forward, color: Colors.white),
-                        ],
+                        ),
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            final formState = context.read<FormStateProvider>();
+                            formState.updateApplicantProfile(
+                              fullName: _fullNameController.text,
+                              dob: _dobController.text,
+                              address: _addressController.text,
+                              city: _selectedCity ?? '',
+                              contactNumber: _contactNumberController.text,
+                              selectedGender: _selectedGender ?? '',
+                              spouseName: _spouseNameController.text,
+                              spouseOccupation:
+                                  _spouseOccupationController.text,
+                              childrenNamesAges:
+                                  _childrenNamesAgesController.text,
+                            );
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EmploymentProfile(),
+                              ),
+                            );
+                          }
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                text: 'Sunod ',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.045,
+                                  color: Colors.white,
+                                ),
+                                children: const <TextSpan>[
+                                  TextSpan(
+                                    text: '(Next)',
+                                    style: TextStyle(
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Icon(Icons.arrow_forward,
+                                color: Colors.white),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -267,28 +284,17 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
     );
   }
 
-  Widget _buildTextField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildTextField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -300,9 +306,10 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
               color: Colors.grey,
             ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           validator: isRequired
@@ -318,28 +325,17 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
     );
   }
 
-  Widget _buildDateField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildDateField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -352,9 +348,10 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
               color: Colors.grey,
             ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           onTap: () async {
@@ -385,28 +382,17 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
     );
   }
 
-  Widget _buildNumberField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildNumberField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -418,23 +404,27 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
               color: Colors.grey,
             ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           keyboardType: TextInputType.number,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
           ],
-          validator: isRequired
-              ? (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'This field cannot be empty';
-                  }
-                  return null;
-                }
-              : null,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'This field cannot be empty';
+            }
+            // Regular expression to validate PH contact numbers
+            final phContactNumberPattern = RegExp(r'^(09\d{9}|(\+639)\d{9})$');
+            if (!phContactNumberPattern.hasMatch(value)) {
+              return 'Please enter a valid PH contact number (e.g. 09XXXXXXXXX or +639XXXXXXXXX)';
+            }
+            return null;
+          },
         ),
       ],
     );
@@ -447,27 +437,12 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
       String? selectedItem,
       String hintText,
       bool isRequired,
-      ValueChanged<String?> onChanged) {
+      ValueChanged<String?> onChanged,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
@@ -477,10 +452,13 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
               fontStyle: FontStyle.italic,
               color: Colors.grey,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14.0, // Equal padding for top and bottom
+              horizontal: 12.0,
+            ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           items: items.map((item) {
@@ -504,28 +482,17 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
     );
   }
 
-  Widget _buildTextAreaField(String label, String subLabel,
-      TextEditingController controller, String hintText, bool isRequired) {
+  Widget _buildTextAreaField(
+      String label,
+      String subLabel,
+      TextEditingController controller,
+      String hintText,
+      bool isRequired,
+      double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            text: '$label ',
-            style: const TextStyle(color: Colors.black, fontSize: 16),
-            children: [
-              TextSpan(
-                text: '($subLabel)',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              if (isRequired)
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: Colors.red),
-                ),
-            ],
-          ),
-        ),
+        _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
@@ -540,7 +507,8 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
             ),
           ),
           validator: isRequired
@@ -556,7 +524,31 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
     );
   }
 
-  Widget _buildCityDropdownField() {
+  Widget _buildLabel(
+      String label, String subLabel, bool isRequired, double screenWidth) {
+    return RichText(
+      text: TextSpan(
+        text: '$label ',
+        style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.045),
+        children: [
+          TextSpan(
+            text: '($subLabel)',
+            style: TextStyle(
+              color: Colors.grey[700], // Darker for better visibility
+              fontSize: screenWidth * 0.04,
+            ),
+          ),
+          if (isRequired)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(color: Colors.red),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCityDropdownField(double screenWidth) {
     const List<String> cities = [
       'Angat',
       'Balagtas',
@@ -593,6 +585,7 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
           _selectedCity = value;
         });
       },
+      screenWidth,
     );
   }
 }

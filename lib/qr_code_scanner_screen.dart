@@ -2,10 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 class QRCodeScannerScreen extends StatefulWidget {
+  const QRCodeScannerScreen({super.key});
+
   @override
   _QRCodeScannerScreenState createState() => _QRCodeScannerScreenState();
 }
@@ -30,7 +31,7 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('QR Code Scanner'),
+        title: const Text('QR Code Scanner'),
       ),
       body: Column(
         children: <Widget>[
@@ -99,7 +100,7 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
                               ],
                             ),
                           )
-                        : CircularProgressIndicator()
+                        : const CircularProgressIndicator()
                     : const Text(
                         'Scan a code',
                         style: TextStyle(
