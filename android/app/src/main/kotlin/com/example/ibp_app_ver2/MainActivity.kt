@@ -1,4 +1,4 @@
-package com.example.ibp_app_ver2_ver2
+package com.mycompany.lawyer
 
 import io.flutter.embedding.android.FlutterActivity
 

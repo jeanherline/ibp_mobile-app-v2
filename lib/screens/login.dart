@@ -68,11 +68,174 @@ class _LoginState extends State<Login> {
     );
   }
 
+  Future<void> _logAuditEntry(
+      User? user, String actionType, String status) async {
+    String userId = user?.uid ?? 'Unknown User';
+    String userName = user?.displayName ?? 'Unknown';
+
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    String userAgent =
+        'Android ${androidInfo.version.release}, Device: ${androidInfo.model}';
+
+    String ipAddress = 'Unknown IP';
+    String location = 'Unknown Location';
+
+    try {
+      final response =
+          await http.get(Uri.parse('https://api.ipify.org?format=text'));
+      if (response.statusCode == 200) {
+        ipAddress = response.body;
+
+        final locationResponse =
+            await http.get(Uri.parse('http://ip-api.com/json/$ipAddress'));
+        if (locationResponse.statusCode == 200) {
+          final locationData = locationResponse.body;
+          final decodedLocationData = jsonDecode(locationData);
+          location =
+              "${decodedLocationData['city']}, ${decodedLocationData['regionName']}, ${decodedLocationData['country']}";
+        }
+      }
+    } catch (e) {
+      print('Failed to fetch IP address or location: $e');
+    }
+
+    final timestamp = FieldValue.serverTimestamp();
+
+    final auditLog = {
+      'actionType': actionType,
+      'affectedData': {
+        'userId': userId,
+        'userName': userName,
+      },
+      'changes': {
+        'action': 'Login',
+        'status': status,
+      },
+      'metadata': {
+        'ipAddress': ipAddress,
+        'location': location,
+        'userAgent': userAgent,
+      },
+      'timestamp': timestamp,
+      'uid': userId,
+    };
+
+    await FirebaseFirestore.instance.collection('audit_logs').add(auditLog);
+  }
+
+  Future<void> _trigger2FAPhoneVerification(User user) async {
+    final auth = FirebaseAuth.instance;
+
+    // Retrieve the phone number from Firestore
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final phoneNumber = userDoc.data()?['phone'];
+
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      _showDialog('Error', 'No phone number registered for 2FA.');
+      return;
+    }
+
+    await auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        // Auto-sign-in if OTP is verified automatically
+        await auth.signInWithCredential(credential);
+        await _logLoginActivityAndTrustedDevice(user);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const Home(activeIndex: 1)),
+        );
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        _showDialog('Verification Failed', e.message ?? 'An error occurred.');
+      },
+      codeSent: (String verificationId, int? resendToken) async {
+        // Show dialog to enter OTP manually
+        await _showOTPVerificationDialog(verificationId);
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
+
+  Future<void> _showOTPVerificationDialog(String verificationId) async {
+    final TextEditingController _otpController = TextEditingController();
+    bool _isVerifying = false;
+
+    // Use a dialog context from the current widget tree
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter OTP'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _otpController,
+              decoration: const InputDecoration(
+                labelText: 'OTP',
+                hintText: 'Enter the OTP sent to your phone',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            if (_isVerifying) const SizedBox(height: 16),
+            if (_isVerifying)
+              const CircularProgressIndicator(), // Loading spinner
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              setState(() {
+                _isVerifying = true; // Start the loading state
+              });
+
+              try {
+                // Create a PhoneAuthCredential with the code
+                PhoneAuthCredential credential = PhoneAuthProvider.credential(
+                  verificationId: verificationId,
+                  smsCode: _otpController.text.trim(),
+                );
+
+                // Sign the user in (or link) with the credential
+                await FirebaseAuth.instance.signInWithCredential(credential);
+                await _logLoginActivityAndTrustedDevice(
+                    FirebaseAuth.instance.currentUser!);
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                      builder: (context) => const Home(activeIndex: 1)),
+                );
+              } on FirebaseAuthException catch (e) {
+                _showDialog(
+                    'Verification Failed', e.message ?? 'An error occurred.');
+              } finally {
+                setState(() {
+                  _isVerifying = false; // Stop the loading state
+                });
+              }
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _signIn() async {
     setState(() {
       _isLoading = true;
     });
+
     try {
+      // Sign in with email and password
       UserCredential userCredential =
           await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -80,51 +243,79 @@ class _LoginState extends State<Login> {
       );
 
       User? user = userCredential.user;
-      if (user != null && !user.emailVerified) {
-        await user.reload();
-        user = FirebaseAuth.instance.currentUser;
-      }
-
-      if (user != null && user.emailVerified) {
-        await FirebaseFirestore.instance
+      if (user != null) {
+        // Check if 2FA is enabled for the user in Firestore
+        final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
-            .update({'user_status': 'active'});
+            .get();
+        bool isTwoFactorEnabled =
+            userDoc.data()?['isTwoFactorEnabled'] ?? false;
 
-        await _logLoginActivityAndTrustedDevice(user);
+        // Retrieve device information
+        DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        String deviceName = androidInfo.model ?? 'Unknown device';
 
-        final token = await user.getIdToken();
+        // Check if the current device is already trusted
+        final trustedDevicesQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('trusted_devices')
+            .doc(deviceName)
+            .get();
 
-        if (token != null) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('authToken', token);
-          await prefs.setString('userId', user.uid);
+        if (isTwoFactorEnabled && !trustedDevicesQuery.exists) {
+          // Trigger OTP verification if 2FA is enabled and device is not trusted
+          await _trigger2FAPhoneVerification(user);
+        } else {
+          // Continue with regular login if 2FA is not enabled or device is trusted
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'user_status': 'active'});
+
+          // Log login activity and trusted device
+          await _logLoginActivityAndTrustedDevice(user);
+
+          // Log the audit entry with IP and user agent
+          await _logAuditEntry(user, 'ACCESS', 'Success');
+
+          // Store auth token in SharedPreferences
+          final token = await user.getIdToken();
+          if (token != null) {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('authToken', token);
+            await prefs.setString('userId', user.uid);
+          }
+
+          // Navigate to home if user is active
+          bool isActive = await checkUserStatus(user.uid);
+          if (isActive) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                  builder: (context) => const Home(activeIndex: 1)),
+            );
+          } else {
+            _showDialog('Sign In Failed', 'Your account is not active.');
+            await _logAuditEntry(user, 'ACCESS', 'Inactive account');
+          }
         }
-      }
-
-      bool isActive = await checkUserStatus(user?.uid);
-
-      if (isActive) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-              builder: (context) => const Home(
-                    activeIndex: 1,
-                  )),
-        );
-      } else {
-        _showDialog('Sign In Failed', 'Your account is not active.');
       }
     } on FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {
         case 'user-not-found':
           message = 'No user found for that email.';
+          await _logAuditEntry(null, 'user_not_found', 'Failed');
           break;
         case 'wrong-password':
           message = 'Wrong password provided.';
+          await _logAuditEntry(null, 'wrong_password', 'Failed');
           break;
         default:
           message = 'An error occurred. Please try again.';
+          await _logAuditEntry(null, 'unknown_error', 'Failed');
       }
       _showDialog('Sign In Failed', message);
     } finally {
@@ -160,14 +351,6 @@ class _LoginState extends State<Login> {
 
       User? user = userCredential.user;
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'display_name': user.displayName,
-          'email': user.email,
-          'user_status': 'active',
-          'created_time': DateTime.now(),
-        }, SetOptions(merge: true));
-
         await _logLoginActivityAndTrustedDevice(user);
 
         final token = await user.getIdToken();
@@ -177,6 +360,7 @@ class _LoginState extends State<Login> {
           await prefs.setString('userId', user.uid);
         }
 
+        // ignore: use_build_context_synchronously
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
               builder: (context) => const Home(

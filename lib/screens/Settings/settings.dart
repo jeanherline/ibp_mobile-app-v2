@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:ibp_app_ver2/screens/Settings/about.dart';
+import 'package:ibp_app_ver2/screens/Settings/audit_logs.dart';
 import 'package:ibp_app_ver2/screens/Settings/change_email_address.dart';
 import 'package:ibp_app_ver2/screens/Settings/change_password.dart';
 import 'package:ibp_app_ver2/screens/Settings/login_activity.dart';
@@ -21,10 +22,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _isGoogleLinked = false;
   bool _isTwoFactorEnabled = false;
-  bool _isAppointmentReminderEnabled = false;
   bool _isGoogleLinkLoading = false; // Separate loading state for Google link
-  bool _isPushNotificationsEnabled = false; // Add this to the state class
   String _verificationId = ''; // To store the verification ID after sending OTP
+  // ignore: unused_field
   bool _isPhoneVerificationInProgress =
       false; // To track the phone verification progress
   String? _phoneNumber; // To store the user's phone number
@@ -32,33 +32,8 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _fetchSettingsFromDatabase();
     _checkGoogleLink();
     _checkTwoFactorStatus();
-    _checkAppointmentReminderStatus();
-  }
-
-  Future<void> _fetchSettingsFromDatabase() async {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      // Fetch data from Firestore and update the state
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      if (userDoc.exists) {
-        setState(() {
-          _isGoogleLinked = _checkIfGoogleLinked(user);
-          _isTwoFactorEnabled = userDoc['isTwoFactorEnabled'] ?? false;
-          _isAppointmentReminderEnabled =
-              userDoc['appointmentRemindersEnabled'] ?? true;
-          _isPushNotificationsEnabled =
-              userDoc['pushNotificationsEnabled'] ?? false;
-        });
-      }
-    }
   }
 
   bool _checkIfGoogleLinked(User user) {
@@ -68,31 +43,6 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     }
     return false;
-  }
-
-  Future<void> _togglePushNotifications(bool value) async {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'pushNotificationsEnabled': value,
-      });
-
-      setState(() {
-        _isPushNotificationsEnabled = value;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Push notifications ${value ? 'enabled' : 'disabled'} successfully.',
-          ),
-        ),
-      );
-    }
   }
 
   Future<void> _deactivateAccount() async {
@@ -129,51 +79,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _checkAppointmentReminderStatus() async {
-    setState(() {});
-
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      setState(() {
-        _isAppointmentReminderEnabled =
-            userDoc['appointmentRemindersEnabled'] ?? true;
-      });
-    }
-
-    setState(() {});
-  }
-
-  Future<void> _toggleAppointmentReminders(bool value) async {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'appointmentRemindersEnabled': value,
-      });
-
-      setState(() {
-        _isAppointmentReminderEnabled = value;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Appointment reminders ${value ? 'enabled' : 'disabled'} successfully.',
-          ),
-        ),
-      );
-    }
-  }
-
   Future<void> _checkTwoFactorStatus() async {
     setState(() {});
 
@@ -194,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showOtpInputModal(BuildContext context) {
-    TextEditingController _otpController = TextEditingController();
+    TextEditingController otpController = TextEditingController();
 
     showDialog(
       context: context,
@@ -202,7 +107,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           title: const Text('Enter OTP'),
           content: TextField(
-            controller: _otpController,
+            controller: otpController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'OTP',
@@ -218,7 +123,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final otp = _otpController.text.trim();
+                final otp = otpController.text.trim();
                 if (otp.isNotEmpty) {
                   final PhoneAuthCredential credential =
                       PhoneAuthProvider.credential(
@@ -304,7 +209,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showPhoneNumberModal(BuildContext context) {
-    TextEditingController _phoneNumberController = TextEditingController();
+    TextEditingController phoneNumberController = TextEditingController();
 
     showDialog(
       context: context,
@@ -312,7 +217,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           title: const Text('Enter your phone number'),
           content: TextField(
-            controller: _phoneNumberController,
+            controller: phoneNumberController,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
               labelText: 'Phone Number',
@@ -328,7 +233,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final phoneNumber = _phoneNumberController.text.trim();
+                final phoneNumber = phoneNumberController.text.trim();
                 if (phoneNumber.isNotEmpty) {
                   setState(() {
                     _phoneNumber = phoneNumber;
@@ -524,13 +429,26 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _unlinkGoogleAccount() async {
     setState(() {
-      _isGoogleLinkLoading = true; // Set Google loading
+      _isGoogleLinkLoading = true;
     });
 
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
 
-      await user?.unlink('google.com');
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No user is signed in.')),
+        );
+        return;
+      }
+
+      await user.unlink('google.com');
+
+      // Update Firestore to indicate Google account is unlinked
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'isGoogleLinked': false});
 
       setState(() {
         _isGoogleLinked = false;
@@ -539,13 +457,25 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Google account unlinked successfully!')),
       );
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'requires-recent-login':
+          message = 'Please re-authenticate and try again.';
+          break;
+        default:
+          message = 'Failed to unlink Google account: ${e.message}';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to unlink Google account: $e')),
+        SnackBar(content: Text('An unexpected error occurred: $e')),
       );
     } finally {
       setState(() {
-        _isGoogleLinkLoading = false; // Stop loading after operation
+        _isGoogleLinkLoading = false;
       });
     }
   }
@@ -607,28 +537,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 : const Icon(Icons.arrow_forward_ios, color: Color(0xFF580049)),
           ),
           const SizedBox(height: 24),
-          const SectionHeader(title: 'Notifications'),
-          SettingTile(
-            title: 'Push Notifications',
-            icon: Icons.notifications,
-            trailing: Switch(
-              value: _isPushNotificationsEnabled,
-              onChanged: (bool value) {
-                _togglePushNotifications(value);
-              },
-            ),
-          ),
-          SettingTile(
-            title: 'Appointment Reminders',
-            icon: Icons.calendar_today,
-            trailing: Switch(
-              value: _isAppointmentReminderEnabled,
-              onChanged: (bool value) {
-                _toggleAppointmentReminders(value);
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
           const SectionHeader(title: 'Security'),
           SettingTile(
             title: 'Two-Factor Authentication (2FA)',
@@ -657,6 +565,17 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (context) => const TrustedDevicesPage()),
+              );
+            },
+          ),
+          SettingTile(
+            title: 'Audit Logs',
+            icon: Icons.assignment, // Changed to assignment icon
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AuditLogPage(),
+                ),
               );
             },
           ),

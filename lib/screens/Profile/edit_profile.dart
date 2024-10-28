@@ -345,6 +345,12 @@ class _EditProfileState extends State<EditProfile> {
         validator: _validatePhoneNumber,
         decoration: InputDecoration(
           labelText: label,
+          prefixText:
+              controller.text.isEmpty ? '+63 ' : null, // Prefix if empty
+          prefixStyle: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -353,6 +359,15 @@ class _EditProfileState extends State<EditProfile> {
           contentPadding:
               const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
+        onTap: () {
+          // Automatically add +63 if field is empty
+          if (controller.text.isEmpty) {
+            controller.text = '+63 ';
+            controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: controller.text.length),
+            );
+          }
+        },
       ),
     );
   }
@@ -436,42 +451,94 @@ class _EditProfileState extends State<EditProfile> {
 
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userData = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final data = userData.data();
-
-      if (data == null) return;
-
-      Map<String, dynamic> updatedData = {
-        'display_name': _displayNameController.text,
-        'middle_name': _middleNameController.text,
-        'last_name': _lastNameController.text,
-        'dob': Timestamp.fromDate(_selectedDate),
-        'phone': _phoneController.text,
-        'gender': _selectedGender,
-        'spouse': _spouseController.text,
-        'spouseOccupation': _spouseOccupationController.text,
-        'city': _selectedCity,
-        'photo_url': _photoUrl,
-      };
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update(updatedData);
-
-      _originalData = updatedData; // Reset original data after saving
-      _checkForChanges();
-
-      await _sendProfileUpdateNotification(user.uid);
-
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
+        const SnackBar(content: Text('User is not authenticated')),
       );
+      return;
     }
+
+    // Fetch the current user data from Firestore
+    final userData = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = userData.data();
+
+    if (data == null) return;
+
+    Map<String, dynamic> updatedData = {
+      'display_name': _displayNameController.text,
+      'middle_name': _middleNameController.text,
+      'last_name': _lastNameController.text,
+      'dob': Timestamp.fromDate(_selectedDate),
+      'phone': _phoneController.text,
+      'gender': _selectedGender,
+      'spouse': _spouseController.text,
+      'spouseOccupation': _spouseOccupationController.text,
+      'city': _selectedCity,
+      'photo_url': _photoUrl,
+    };
+
+    // Fetch the most recent login activity for metadata
+    final loginActivitySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('loginActivity')
+        .orderBy('loginTime', descending: true)
+        .limit(1)
+        .get();
+
+    // Initialize metadata values
+    String ipAddress = 'Unknown';
+    String userAgent = 'Unknown';
+
+    if (loginActivitySnapshot.docs.isNotEmpty) {
+      final latestLoginData = loginActivitySnapshot.docs.first.data();
+      ipAddress = latestLoginData['ipAddress'] ?? 'Unknown';
+      userAgent = latestLoginData['deviceName'] ?? 'Unknown';
+    }
+
+    // Calculate changes for audit logging
+    Map<String, dynamic> changes = {};
+    updatedData.forEach((key, value) {
+      if (data[key] != value) {
+        changes[key] = {'oldValue': data[key], 'newValue': value};
+      }
+    });
+
+    // Update user data in Firestore
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .update(updatedData);
+
+    _originalData = updatedData; // Reset original data after saving
+    _checkForChanges();
+
+    // Send profile update notification
+    await _sendProfileUpdateNotification(user.uid);
+
+    // Add audit log entry for profile update
+    await FirebaseFirestore.instance.collection('audit_logs').add({
+      'actionType': 'UPDATE',
+      'timestamp': FieldValue.serverTimestamp(),
+      'uid': user.uid,
+      'changes': changes,
+      'affectedData': {
+        'targetUserId': user.uid,
+        'targetUserName': updatedData['display_name'],
+      },
+      'metadata': {
+        'ipAddress': ipAddress,
+        'userAgent': userAgent,
+      },
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile updated successfully')),
+    );
   }
 
   Future<void> _sendProfileUpdateNotification(String uid) async {

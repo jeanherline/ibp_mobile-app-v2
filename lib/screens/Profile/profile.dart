@@ -1,3 +1,4 @@
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,6 +22,8 @@ class _ProfileScreenState extends State<Profile> {
   String _photoUrl = '';
   String _userQrCode = '';
 
+  get http => null;
+
   @override
   void initState() {
     super.initState();
@@ -36,8 +39,60 @@ class _ProfileScreenState extends State<Profile> {
     }
   }
 
+  Future<String> _fetchIpAddress() async {
+    String ipAddress = 'Unknown IP';
+    try {
+      final response =
+          await http.get(Uri.parse('https://api.ipify.org?format=text'));
+      if (response.statusCode == 200) {
+        ipAddress = response.body;
+      } else {
+        print(
+            'Failed to fetch IP address with status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching IP address: $e');
+    }
+    return ipAddress;
+  }
+
+  Future<void> _saveSignOutAuditLog(User user) async {
+    try {
+      DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+      String deviceName = androidInfo.model ?? 'Unknown device';
+      String platform = androidInfo.version.release ?? 'Unknown version';
+
+      // Fetch IP address
+      String ipAddress = await _fetchIpAddress();
+
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'actionType': 'ACCESS',
+        'timestamp': Timestamp.now(),
+        'uid': user.uid,
+        'changes': {'action': 'Logout', 'status': 'Success'},
+        'affectedData': {
+          'targetUserId': user.uid,
+          'targetUserName': user.displayName ?? 'Unknown User',
+        },
+        'metadata': {
+          'ipAddress': ipAddress, // This should now store the fetched IP
+          'userAgent': deviceName,
+        }
+      });
+      print('Sign-out audit log saved with IP address: $ipAddress');
+    } catch (e) {
+      print('Failed to save sign-out audit log: $e');
+    }
+  }
+
   Future<void> _signOut() async {
     try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _saveSignOutAuditLog(
+            user); // Log sign-out before actually signing out
+      }
       await FirebaseAuth.instance.signOut();
       Navigator.of(context)
           .pushReplacementNamed('/login'); // Navigate back to the login screen

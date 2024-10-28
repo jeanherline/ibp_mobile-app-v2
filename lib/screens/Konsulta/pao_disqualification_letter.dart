@@ -432,7 +432,32 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         .ref()
         .child('konsulta_user_uploads/${user.uid}/$controlNumber/');
 
+    // Ensure contact number starts with +63
+    String contactNumber = formStateProvider.contactNumber.trim();
+    if (!contactNumber.startsWith('+63')) {
+      contactNumber = '+63 $contactNumber';
+    }
+
     try {
+      // Fetch the most recent login activity for metadata
+      final loginActivitySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('loginActivity')
+          .orderBy('loginTime', descending: true)
+          .limit(1)
+          .get();
+
+      // Initialize metadata values
+      String ipAddress = 'Unknown';
+      String userAgent = 'Unknown';
+
+      if (loginActivitySnapshot.docs.isNotEmpty) {
+        final latestLoginData = loginActivitySnapshot.docs.first.data();
+        ipAddress = latestLoginData['ipAddress'] ?? 'Unknown';
+        userAgent = latestLoginData['deviceName'] ?? 'Unknown';
+      }
+
       // Upload images to Firebase Storage
       final barangayImageUrl = await _uploadImage(
           storageRef,
@@ -494,6 +519,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         },
       });
 
+      // Save partial user profile updates
       await usersDoc.set({
         'dob': formStateProvider.dob,
         'phone': formStateProvider.contactNumber,
@@ -503,6 +529,35 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         'city': formStateProvider.city,
         'updated_time': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true)); // Merge with existing data if any
+
+      // Audit log for creating a new appointment
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'actionType': 'CREATE',
+        'timestamp': FieldValue.serverTimestamp(),
+        'uid': user.uid,
+        'changes': {
+          'appointmentDetails.controlNumber': {
+            'oldValue': null,
+            'newValue': controlNumber
+          },
+          'appointmentDetails.appointmentStatus': {
+            'oldValue': null,
+            'newValue': 'pending'
+          },
+          'appointmentDetails.qrCode': {
+            'oldValue': null,
+            'newValue': qrCodeImageUrl
+          },
+        },
+        'affectedData': {
+          'targetUserId': user.uid,
+          'targetUserName': formStateProvider.fullName,
+        },
+        'metadata': {
+          'ipAddress': ipAddress,
+          'userAgent': userAgent,
+        },
+      });
 
       // Notify the current user
       await _sendNotification(
@@ -538,7 +593,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
           ),
         ),
       );
-
+      Provider.of<FormStateProvider>(context, listen: false).clearFormState();
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

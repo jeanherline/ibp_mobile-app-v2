@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:ibp_app_ver2/navbar.dart';
 import 'package:ibp_app_ver2/screens/Appointments/appointmentDetails.dart';
 import 'package:intl/intl.dart';
@@ -38,7 +41,7 @@ class Notifications extends StatelessWidget {
                 ),
               ),
               child: const CustomNavigationBar(
-                activeIndex: 2, // Ensure this shows the active home tab
+                activeIndex: 2,
               ),
             ),
           ),
@@ -56,19 +59,134 @@ class NotificationsList extends StatefulWidget {
 }
 
 class _NotificationsListState extends State<NotificationsList> {
-  final List<Map<String, dynamic>> _notifications = [];
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  final FirebaseRemoteConfig _remoteConfig = FirebaseRemoteConfig.instance;
 
   @override
   void initState() {
     super.initState();
-    // Fetch initial notifications in real-time via Stream
+    _initializeLocalNotifications();
+    _initializeRemoteConfig();
+    _listenForNotifications();
   }
 
-  @override
-  void dispose() {
-    // Mark all notifications as read when the user exits the page
-    _markAllAsRead();
-    super.dispose();
+  Future<void> _initializeRemoteConfig() async {
+    await _remoteConfig.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(minutes: 1),
+      minimumFetchInterval: const Duration(hours: 1),
+    ));
+
+    await _remoteConfig.setDefaults(<String, dynamic>{
+      'notification_color': 'blue',
+      'default_notification_message': 'You have a new notification!',
+    });
+
+    await _fetchRemoteConfig();
+  }
+
+  Future<void> _fetchRemoteConfig() async {
+    try {
+      await _remoteConfig.fetchAndActivate();
+    } catch (e) {
+      print('Failed to fetch remote config: $e');
+    }
+  }
+
+  String get notificationColor => _remoteConfig.getString('notification_color');
+  String get defaultNotificationMessage =>
+      _remoteConfig.getString('default_notification_message');
+
+  Future<void> _initializeLocalNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  void _listenForNotifications() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final userId = currentUser.uid;
+
+      FirebaseFirestore.instance
+          .collection('notifications')
+          .where('uid', isEqualTo: userId)
+          .where('read', isEqualTo: false)
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        for (var change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            final notificationData = change.doc.data();
+            _showFlutterNotification(notificationData!);
+            change.doc.reference.update({'read': true});
+          }
+        }
+      });
+    }
+  }
+
+  void _showFlutterNotification(Map<String, dynamic> notificationData) async {
+    String type = notificationData['type'] ?? 'general';
+    String message = notificationData['message'] ?? defaultNotificationMessage;
+    String title;
+    IconData icon;
+
+    // Customize title and icon based on notification type
+    switch (type) {
+      case 'appointment':
+        title = 'New Appointment';
+        icon = Icons.calendar_today;
+        message = 'You have an upcoming appointment!';
+        break;
+      case 'profile_update':
+        title = 'Profile Updated';
+        icon = Icons.edit;
+        message = 'Your profile was successfully updated!';
+        break;
+      case 'reminder':
+        title = 'Reminder';
+        icon = Icons.alarm;
+        message = 'You have a scheduled reminder.';
+        break;
+      default:
+        title = 'Notification';
+        icon = Icons.notifications;
+        break;
+    }
+
+    // Customize notification appearance and behavior based on type
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
+        const AndroidNotificationDetails(
+      'ibp_notifications', // Channel ID
+      'IBP Notifications', // Channel name
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      styleInformation:
+          BigTextStyleInformation(''), // Allows for larger messages
+      icon: '@mipmap/ic_launcher', // Custom icon based on type
+      color: Colors.blue,
+    );
+
+    // Notification details for each platform
+    NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Show the customized notification popup
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      title,
+      message,
+      platformChannelSpecifics,
+      payload: notificationData['controlNumber'], // Payload for additional data
+    );
   }
 
   Future<void> _markAllAsRead() async {
@@ -117,7 +235,6 @@ class _NotificationsListState extends State<NotificationsList> {
           }
 
           final notifications = snapshot.data?.docs ?? [];
-
           if (notifications.isEmpty) {
             return const Center(child: Text('No notifications'));
           }
@@ -129,10 +246,10 @@ class _NotificationsListState extends State<NotificationsList> {
                   notifications[index].data() as Map<String, dynamic>;
               final timestamp = notification['timestamp'] as Timestamp?;
               final type = notification['type'] ?? '';
-              final message = notification['message'] ?? 'No message available';
+              final message =
+                  notification['message'] ?? defaultNotificationMessage;
               final isRead = notification['read'] ?? false;
-              final controlNumber = notification['controlNumber'] ??
-                  ''; // Ensure controlNumber is present
+              final controlNumber = notification['controlNumber'] ?? '';
 
               IconData icon;
               switch (type) {
@@ -146,9 +263,14 @@ class _NotificationsListState extends State<NotificationsList> {
                   icon = Icons.mail;
               }
 
+              Color notificationBgColor = isRead
+                  ? Colors.white
+                  : (notificationColor == 'blue'
+                      ? Colors.blue[50]!
+                      : Colors.grey[50]!);
+
               return InkWell(
                 onTap: () {
-                  // Navigate to AppointmentDetails and pass the control number
                   if (controlNumber.isNotEmpty) {
                     Navigator.push(
                       context,
@@ -158,8 +280,6 @@ class _NotificationsListState extends State<NotificationsList> {
                         ),
                       ),
                     );
-                  } else {
-                    print('Error: Control number is missing.');
                   }
                 },
                 child: Container(
@@ -168,7 +288,7 @@ class _NotificationsListState extends State<NotificationsList> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                   decoration: BoxDecoration(
-                    color: isRead ? Colors.white : Colors.blue[50],
+                    color: notificationBgColor,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: isRead
                         ? []
@@ -189,11 +309,8 @@ class _NotificationsListState extends State<NotificationsList> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: Icon(
-                          icon,
-                          color: const Color(0xFF580049),
-                          size: 28,
-                        ),
+                        child: Icon(icon,
+                            color: const Color(0xFF580049), size: 28),
                       ),
                       Expanded(
                         child: Column(
@@ -216,9 +333,7 @@ class _NotificationsListState extends State<NotificationsList> {
                                 DateFormat('MMMM dd, yyyy \'at\' hh:mm a')
                                     .format(timestamp.toDate()),
                                 style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
+                                    fontSize: 12, color: Colors.grey),
                               ),
                           ],
                         ),
@@ -234,5 +349,11 @@ class _NotificationsListState extends State<NotificationsList> {
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _markAllAsRead();
+    super.dispose();
   }
 }

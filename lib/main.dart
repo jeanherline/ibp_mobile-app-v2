@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:ibp_app_ver2/screens/Appointments/appointmentDetails.dart';
@@ -19,12 +20,21 @@ import 'package:ibp_app_ver2/screens/Profile/profile.dart';
 import 'package:ibp_app_ver2/screens/Profile/edit_profile.dart';
 import 'package:ibp_app_ver2/screens/signup.dart';
 import 'package:ibp_app_ver2/screens/splash_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
   runApp(
     ChangeNotifierProvider(
       create: (context) => FormStateProvider(),

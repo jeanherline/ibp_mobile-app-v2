@@ -161,12 +161,10 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                     const SizedBox(height: 20),
                     _buildCityDropdownField(screenWidth),
                     const SizedBox(height: 20),
-                    _buildNumberField(
+                    _buildPhoneNumberField(
                       'Numero ng Telepono',
-                      'Contact Number',
                       _contactNumberController,
                       'Ilagay ang numero ng telepono (Enter contact number)',
-                      true,
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -379,6 +377,52 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
               : null,
         ),
       ],
+    );
+  }
+
+  Widget _buildPhoneNumberField(
+    String label,
+    TextEditingController controller,
+    String helperText,
+    double screenWidth,
+  ) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        prefixText: controller.text.isEmpty
+            ? '+63 '
+            : null, // Show prefix only if the field is empty
+        prefixStyle: const TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w600,
+        ),
+        hintText: 'Ilagay ang numero ng telepono (Enter contact number)',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.black12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF580049)),
+        ),
+      ),
+      onTap: () {
+        if (controller.text.isEmpty) {
+          controller.text = '+63 ';
+        }
+      },
+      onChanged: (value) {
+        // Update the field to remove +63 when already populated
+        if (value != '+63 ' && !value.startsWith('+63 ')) {
+          controller.text = '+63 $value';
+          controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: controller.text.length),
+          );
+        }
+      },
     );
   }
 

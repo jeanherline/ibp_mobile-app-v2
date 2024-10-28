@@ -741,6 +741,25 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     String? fileUrl;
 
     try {
+      // Fetch the most recent login activity data for metadata
+      final loginActivitySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(appointmentDetails['applicantProfile']['uid'])
+          .collection('loginActivity')
+          .orderBy('loginTime', descending: true)
+          .limit(1)
+          .get();
+
+      // Initialize metadata values
+      String ipAddress = 'Unknown';
+      String userAgent = 'Unknown';
+
+      if (loginActivitySnapshot.docs.isNotEmpty) {
+        final latestLoginData = loginActivitySnapshot.docs.first.data();
+        ipAddress = latestLoginData['ipAddress'] ?? 'Unknown';
+        userAgent = latestLoginData['deviceName'] ?? 'Unknown';
+      }
+
       // 1. Check if the user has selected a file and upload it first
       if (_selectedFile != null) {
         fileUrl = await _uploadFileToStorage(
@@ -764,6 +783,39 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         'appointmentDetails.newControlNumber': newControlNumber,
         'appointmentDetails.requestReason': _reason,
         'uploadedImages.newRequestUrl': fileUrl ?? '', // Add the file URL here
+      });
+
+      // Audit log for updating current appointment
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'actionType': 'UPDATE',
+        'timestamp': FieldValue.serverTimestamp(),
+        'uid': appointmentDetails['applicantProfile']['uid'],
+        'changes': {
+          'appointmentDetails.newRequest': {
+            'oldValue': false,
+            'newValue': true
+          },
+          'appointmentDetails.newControlNumber': {
+            'oldValue': widget.controlNumber,
+            'newValue': newControlNumber,
+          },
+          'appointmentDetails.requestReason': {
+            'oldValue': null,
+            'newValue': _reason
+          },
+          'uploadedImages.newRequestUrl': {
+            'oldValue': null,
+            'newValue': fileUrl ?? ''
+          },
+        },
+        'affectedData': {
+          'targetUserId': appointmentDetails['applicantProfile']['uid'],
+          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
+        },
+        'metadata': {
+          'ipAddress': ipAddress,
+          'userAgent': userAgent,
+        },
       });
 
       // 3. Generate QR code for the new appointment
@@ -834,6 +886,35 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           .collection('appointments')
           .doc(newControlNumber)
           .set(newAppointmentData);
+
+      // Audit log for creating a new appointment
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'actionType': 'CREATE',
+        'timestamp': FieldValue.serverTimestamp(),
+        'uid': appointmentDetails['applicantProfile']['uid'],
+        'changes': {
+          'appointmentDetails.controlNumber': {
+            'oldValue': null,
+            'newValue': newControlNumber
+          },
+          'appointmentDetails.appointmentStatus': {
+            'oldValue': null,
+            'newValue': 'pending'
+          },
+          'appointmentDetails.qrCode': {
+            'oldValue': null,
+            'newValue': qrCodeImageUrl
+          },
+        },
+        'affectedData': {
+          'targetUserId': appointmentDetails['applicantProfile']['uid'],
+          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
+        },
+        'metadata': {
+          'ipAddress': ipAddress,
+          'userAgent': userAgent,
+        },
+      });
 
       // Notify the current user
       await _sendNotification(
