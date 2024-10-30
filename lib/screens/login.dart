@@ -161,8 +161,8 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> _showOTPVerificationDialog(String verificationId) async {
-    final TextEditingController _otpController = TextEditingController();
-    bool _isVerifying = false;
+    final TextEditingController otpController = TextEditingController();
+    bool isVerifying = false;
 
     // Use a dialog context from the current widget tree
     showDialog(
@@ -173,15 +173,15 @@ class _LoginState extends State<Login> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: _otpController,
+              controller: otpController,
               decoration: const InputDecoration(
                 labelText: 'OTP',
                 hintText: 'Enter the OTP sent to your phone',
               ),
               keyboardType: TextInputType.number,
             ),
-            if (_isVerifying) const SizedBox(height: 16),
-            if (_isVerifying)
+            if (isVerifying) const SizedBox(height: 16),
+            if (isVerifying)
               const CircularProgressIndicator(), // Loading spinner
           ],
         ),
@@ -195,14 +195,14 @@ class _LoginState extends State<Login> {
           TextButton(
             onPressed: () async {
               setState(() {
-                _isVerifying = true; // Start the loading state
+                isVerifying = true; // Start the loading state
               });
 
               try {
                 // Create a PhoneAuthCredential with the code
                 PhoneAuthCredential credential = PhoneAuthProvider.credential(
                   verificationId: verificationId,
-                  smsCode: _otpController.text.trim(),
+                  smsCode: otpController.text.trim(),
                 );
 
                 // Sign the user in (or link) with the credential
@@ -218,7 +218,7 @@ class _LoginState extends State<Login> {
                     'Verification Failed', e.message ?? 'An error occurred.');
               } finally {
                 setState(() {
-                  _isVerifying = false; // Stop the loading state
+                  isVerifying = false; // Stop the loading state
                 });
               }
             },
@@ -252,24 +252,20 @@ class _LoginState extends State<Login> {
         bool isTwoFactorEnabled =
             userDoc.data()?['isTwoFactorEnabled'] ?? false;
 
-        // Retrieve device information
-        DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        String deviceName = androidInfo.model ?? 'Unknown device';
-
-        // Check if the current device is already trusted
-        final trustedDevicesQuery = await FirebaseFirestore.instance
+        // Check if there is any login activity
+        final loginActivityQuery = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
-            .collection('trusted_devices')
-            .doc(deviceName)
+            .collection('loginActivity')
             .get();
 
-        if (isTwoFactorEnabled && !trustedDevicesQuery.exists) {
-          // Trigger OTP verification if 2FA is enabled and device is not trusted
+        bool hasLoginActivity = loginActivityQuery.docs.isNotEmpty;
+
+        // If no login activity, skip 2FA for the first login
+        if (isTwoFactorEnabled && !hasLoginActivity) {
           await _trigger2FAPhoneVerification(user);
         } else {
-          // Continue with regular login if 2FA is not enabled or device is trusted
+          // Continue with regular login if 2FA is not required or device is trusted
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
@@ -517,6 +513,13 @@ class _LoginState extends State<Login> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Image.asset(
+                  'assets/img/ibp_logo.png', // Replace with your logo path
+                  height: 100.0, // Adjust height as needed
+                ),
+              ),
+              const SizedBox(height: 24.0),
               const Center(
                 child: Text(
                   'Welcome!',
@@ -621,50 +624,50 @@ class _LoginState extends State<Login> {
                 ),
               ),
               const SizedBox(height: 25),
-              const OrDivider(),
-              const SizedBox(height: 25),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.black,
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(
-                    color: Colors.grey,
-                    width: 1.0,
-                  ),
-                  minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _signInWithGoogle,
-                icon: Image.asset(
-                  'assets/img/google_logo.png',
-                  height: 24,
-                ),
-                label: const Text(
-                  'Sign-In with Google',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[800],
-                  minimumSize: const Size(double.infinity, 55),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed:
-                    _showFacebookModal, // Call a function to show the modal
-                icon: const Icon(Icons.facebook, color: Colors.white),
-                label: const Text(
-                  'Sign-In with Facebook',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-              const SizedBox(height: 16),
+              // const OrDivider(),
+              // const SizedBox(height: 25),
+              // ElevatedButton.icon(
+              //   style: ElevatedButton.styleFrom(
+              //     foregroundColor: Colors.black,
+              //     backgroundColor: Colors.white,
+              //     side: const BorderSide(
+              //       color: Colors.grey,
+              //       width: 1.0,
+              //     ),
+              //     minimumSize: const Size(double.infinity, 55),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //     ),
+              //   ),
+              //   onPressed: _signInWithGoogle,
+              //   icon: Image.asset(
+              //     'assets/img/google_logo.png',
+              //     height: 24,
+              //   ),
+              //   label: const Text(
+              //     'Sign-In with Google',
+              //     style: TextStyle(fontSize: 18),
+              //   ),
+              // ),
+              // const SizedBox(height: 16),
+              // ElevatedButton.icon(
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: Colors.blue[800],
+              //     minimumSize: const Size(double.infinity, 55),
+              //     foregroundColor: Colors.white,
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //     ),
+              //   ),
+              //   onPressed:
+              //       _showFacebookModal, // Call a function to show the modal
+              //   icon: const Icon(Icons.facebook, color: Colors.white),
+              //   label: const Text(
+              //     'Sign-In with Facebook',
+              //     style: TextStyle(fontSize: 18),
+              //   ),
+              // ),
+              // const SizedBox(height: 16),
             ],
           ),
         ),

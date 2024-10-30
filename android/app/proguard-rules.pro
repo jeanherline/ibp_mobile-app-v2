@@ -1,0 +1,4 @@
+-keep class org.jitsi.meet.** { *; }
+-dontwarn org.jitsi.meet.**
+-keep class org.webrtc.** { *; }
+-dontwarn org.webrtc.**

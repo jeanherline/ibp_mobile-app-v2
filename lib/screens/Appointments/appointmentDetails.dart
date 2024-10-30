@@ -29,6 +29,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   String? _lastSubmittedAppointmentControlNumber; // Store last control number
   bool _hasRequestedNewAppointment =
       false; // Check if an appointment has already been requested
+  int _selectedRating = 0; // Store selected rating
 
   @override
   void initState() {
@@ -39,6 +40,34 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+  }
+
+  Future<void> _submitRating(int rating) async {
+    await FirebaseFirestore.instance
+        .collection('appointments')
+        .doc(widget.controlNumber)
+        .update({
+      'rating': rating,
+    });
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: const Text('Thank you for your feedback!'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    setState(() {
+      _selectedRating = rating; // Set permanent rating
+    });
   }
 
   Future<void> _checkIfAppointmentAlreadyRequested() async {
@@ -75,11 +104,15 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     if (doc.exists) {
       final newRequest =
           doc.data()?['appointmentDetails']['newRequest'] ?? false;
+      final rating = doc.data()?['rating']; // Fetch stored rating, if it exists
 
-      // Only update state if there's a change
-      if (_hasRequestedNewAppointment != newRequest) {
+      // Update the state only if there's a change
+      if (_hasRequestedNewAppointment != newRequest ||
+          (rating != null && _selectedRating != rating)) {
         setState(() {
           _hasRequestedNewAppointment = newRequest;
+          _selectedRating =
+              rating ?? 0; // Set _selectedRating if a rating exists
         });
       }
 
@@ -485,32 +518,47 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   ),
                                 )
                               ] else ...[
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    _showRequestForm(
-                                        appointmentDetails, userFullName);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color.fromARGB(255,
-                                        12, 122, 17), // Active button color
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 15),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                // ElevatedButton.icon(
+                                //   onPressed: () {
+                                //     _showRequestForm(
+                                //         appointmentDetails, userFullName);
+                                //   },
+                                //   style: ElevatedButton.styleFrom(
+                                //     backgroundColor: const Color.fromARGB(255,
+                                //         12, 122, 17), // Active button color
+                                //     padding: const EdgeInsets.symmetric(
+                                //         horizontal: 10, vertical: 15),
+                                //     shape: RoundedRectangleBorder(
+                                //       borderRadius: BorderRadius.circular(10),
+                                //     ),
+                                //   ),
+                                //   icon: const Icon(Icons.refresh,
+                                //       color: Colors.white),
+                                //   label: Text(
+                                //     'Request Another Appointment',
+                                //     style: TextStyle(
+                                //       color: Colors.white,
+                                //       fontSize: screenWidth * 0.04,
+                                //       fontWeight: FontWeight.bold,
+                                //       fontStyle: FontStyle.italic,
+                                //     ),
+                                //   ),
+                                // ),
+                                if (appointmentStatus == 'done') ...[
+                                  const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: Text(
+                                        'Rate your satisfaction with this appointment:',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  icon: const Icon(Icons.refresh,
-                                      color: Colors.white),
-                                  label: Text(
-                                    'Request Another Appointment',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: screenWidth * 0.04,
-                                      fontWeight: FontWeight.bold,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                )
+                                  _buildStarRating(), // Display the rating stars
+                                ],
                               ]
                             ]
                           ],
@@ -524,6 +572,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStarRating() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(5, (index) {
+        return IconButton(
+          icon: Icon(
+            Icons.star,
+            color: index < _selectedRating ? Colors.yellow : Colors.grey,
+          ),
+          onPressed: _selectedRating == 0
+              ? () => _submitRating(index + 1)
+              : null, // Disable changes if already rated
+        );
+      }),
     );
   }
 
@@ -601,7 +666,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       ),
                       const SizedBox(height: 10),
                       TextFormField(
-                        initialValue: _reason, // Retain text input
+                        initialValue: _reason,
                         decoration: InputDecoration(
                           labelStyle: const TextStyle(
                             color: Colors.black87,
@@ -643,12 +708,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      // File attachment button
                       OutlinedButton.icon(
                         onPressed: () async {
                           await _selectFile();
-                          setState(
-                              () {}); // Update the UI when file is attached
+                          setState(() {});
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.blueAccent),
@@ -689,10 +752,9 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
                               _formKey.currentState!.save();
-                              Navigator.pop(context); // Close the bottom sheet
+                              Navigator.pop(context);
                               await _requestAnotherAppointment(
                                   appointmentDetails, fullName);
-                              // Reset values after successful submission
                               setState(() {
                                 _selectedFile = null;
                                 _reason = '';
@@ -731,7 +793,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
 
   Future<void> _requestAnotherAppointment(
       Map<String, dynamic> appointmentDetails, String fullName) async {
-    if (_isSubmitting) return; // Prevent multiple submissions
+    if (_isSubmitting) return;
 
     setState(() {
       _isSubmitting = true;
@@ -741,7 +803,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     String? fileUrl;
 
     try {
-      // Fetch the most recent login activity data for metadata
+      // Fetch the latest login activity data
       final loginActivitySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(appointmentDetails['applicantProfile']['uid'])
@@ -750,7 +812,6 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           .limit(1)
           .get();
 
-      // Initialize metadata values
       String ipAddress = 'Unknown';
       String userAgent = 'Unknown';
 
@@ -760,7 +821,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         userAgent = latestLoginData['deviceName'] ?? 'Unknown';
       }
 
-      // 1. Check if the user has selected a file and upload it first
+      // Upload file if a file is selected
       if (_selectedFile != null) {
         fileUrl = await _uploadFileToStorage(
             _selectedFile!, newControlNumber, fullName);
@@ -774,7 +835,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         }
       }
 
-      // 2. Update the current appointment to set newRequest to true with fileUrl if available
+      // Update the current appointment with the necessary follow-up data
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(widget.controlNumber)
@@ -782,92 +843,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         'appointmentDetails.newRequest': true,
         'appointmentDetails.newControlNumber': newControlNumber,
         'appointmentDetails.requestReason': _reason,
-        'uploadedImages.newRequestUrl': fileUrl ?? '', // Add the file URL here
+        'uploadedImages.newRequestUrl': fileUrl ?? '',
       });
 
-      // Audit log for updating current appointment
-      await FirebaseFirestore.instance.collection('audit_logs').add({
-        'actionType': 'UPDATE',
-        'timestamp': FieldValue.serverTimestamp(),
-        'uid': appointmentDetails['applicantProfile']['uid'],
-        'changes': {
-          'appointmentDetails.newRequest': {
-            'oldValue': false,
-            'newValue': true
-          },
-          'appointmentDetails.newControlNumber': {
-            'oldValue': widget.controlNumber,
-            'newValue': newControlNumber,
-          },
-          'appointmentDetails.requestReason': {
-            'oldValue': null,
-            'newValue': _reason
-          },
-          'uploadedImages.newRequestUrl': {
-            'oldValue': null,
-            'newValue': fileUrl ?? ''
-          },
-        },
-        'affectedData': {
-          'targetUserId': appointmentDetails['applicantProfile']['uid'],
-          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
-        },
-        'metadata': {
-          'ipAddress': ipAddress,
-          'userAgent': userAgent,
-        },
-      });
-
-      // 3. Generate QR code for the new appointment
+      // Generate and save the new QR code URL
       final qrCodeImageUrl = await _generateQrCodeImageUrl(newControlNumber);
 
-      // 4. Create new appointment data with the uploaded file URL and QR code
+      // Prepare the data for the new appointment document
       Map<String, dynamic> newAppointmentData = {
-        'applicantProfile': {
-          'uid': appointmentDetails['applicantProfile']['uid'],
-          'fullName': appointmentDetails['applicantProfile']['fullName'],
-          'dob': appointmentDetails['applicantProfile']['dob'],
-          'address': appointmentDetails['applicantProfile']['address'],
-          'city': appointmentDetails['applicantProfile']['city'],
-          'contactNumber': appointmentDetails['applicantProfile']
-              ['contactNumber'],
-          'selectedGender': appointmentDetails['applicantProfile']
-              ['selectedGender'],
-          'spouseName': appointmentDetails['applicantProfile']['spouseName'],
-          'spouseOccupation': appointmentDetails['applicantProfile']
-              ['spouseOccupation'],
-          'childrenNamesAges': appointmentDetails['applicantProfile']
-              ['childrenNamesAges'],
-        },
-        'employmentProfile': {
-          'occupation': appointmentDetails['employmentProfile']['occupation'],
-          'kindOfEmployment': appointmentDetails['employmentProfile']
-              ['kindOfEmployment'],
-          'employerName': appointmentDetails['employmentProfile']
-              ['employerName'],
-          'employerAddress': appointmentDetails['employmentProfile']
-              ['employerAddress'],
-          'monthlyIncome': appointmentDetails['employmentProfile']
-              ['monthlyIncome'],
-        },
-        'legalAssistanceRequested': {
-          'selectedAssistanceType':
-              appointmentDetails['legalAssistanceRequested']
-                  ['selectedAssistanceType'],
-          'problems': appointmentDetails['legalAssistanceRequested']
-              ['problems'],
-          'problemReason': appointmentDetails['legalAssistanceRequested']
-              ['problemReason'],
-          'desiredSolutions': appointmentDetails['legalAssistanceRequested']
-              ['desiredSolutions'],
-        },
+        'applicantProfile':
+            Map<String, dynamic>.from(appointmentDetails['applicantProfile']),
+        'employmentProfile':
+            Map<String, dynamic>.from(appointmentDetails['employmentProfile']),
+        'legalAssistanceRequested': Map<String, dynamic>.from(
+            appointmentDetails['legalAssistanceRequested']),
         'uploadedImages': {
-          'barangaySelectedImage': appointmentDetails['uploadedImages']
-              ['barangaySelectedImage'],
-          'dswdSelectedImage': appointmentDetails['uploadedImages']
-              ['dswdSelectedImage'],
-          'paoSelectedImage': appointmentDetails['uploadedImages']
-              ['paoSelectedImage'],
+          ...Map<String, dynamic>.from(appointmentDetails['uploadedImages']),
+          'newRequestUrl': fileUrl ?? '', // Include the uploaded file URL
         },
         'appointmentDetails': {
           'controlNumber': newControlNumber,
@@ -876,18 +868,46 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           'createdDate': FieldValue.serverTimestamp(),
           'updatedTime': FieldValue.serverTimestamp(),
           'requestReason': _reason,
-          'uploadedImages.newRequestUrl':
-              fileUrl ?? '', // Add uploaded file URL here
-        }
+        },
       };
 
-      // 5. Save the new appointment to Firestore
+      // Save the new appointment document with the new control number as ID
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(newControlNumber)
           .set(newAppointmentData);
 
-      // Audit log for creating a new appointment
+      // Add audit log for the original appointment update
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'actionType': 'UPDATE',
+        'timestamp': FieldValue.serverTimestamp(),
+        'uid': appointmentDetails['applicantProfile']['uid'],
+        'changes': {
+          'appointmentDetails.newRequest': {
+            'oldValue': false,
+            'newValue': true,
+          },
+          'appointmentDetails.newControlNumber': {
+            'oldValue': widget.controlNumber,
+            'newValue': newControlNumber,
+          },
+          'appointmentDetails.requestReason': {
+            'oldValue': null,
+            'newValue': _reason,
+          },
+          'uploadedImages.newRequestUrl': {
+            'oldValue': null,
+            'newValue': fileUrl ?? '',
+          },
+        },
+        'affectedData': {
+          'targetUserId': appointmentDetails['applicantProfile']['uid'],
+          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
+        },
+        'metadata': {'ipAddress': ipAddress, 'userAgent': userAgent},
+      });
+
+      // Add audit log for the new appointment creation
       await FirebaseFirestore.instance.collection('audit_logs').add({
         'actionType': 'CREATE',
         'timestamp': FieldValue.serverTimestamp(),
@@ -895,37 +915,34 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         'changes': {
           'appointmentDetails.controlNumber': {
             'oldValue': null,
-            'newValue': newControlNumber
+            'newValue': newControlNumber,
           },
           'appointmentDetails.appointmentStatus': {
             'oldValue': null,
-            'newValue': 'pending'
+            'newValue': 'pending',
           },
           'appointmentDetails.qrCode': {
             'oldValue': null,
-            'newValue': qrCodeImageUrl
+            'newValue': qrCodeImageUrl,
           },
         },
         'affectedData': {
           'targetUserId': appointmentDetails['applicantProfile']['uid'],
           'targetUserName': appointmentDetails['applicantProfile']['fullName'],
         },
-        'metadata': {
-          'ipAddress': ipAddress,
-          'userAgent': userAgent,
-        },
+        'metadata': {'ipAddress': ipAddress, 'userAgent': userAgent},
       });
 
-      // Notify the current user
+      // Send notification to the user and head lawyers
       await _sendNotification(
         uid: appointmentDetails['applicantProfile']['uid'],
         message:
-            'Your appointment request with Ticket Number $newControlNumber has been submitted successfully. Please wait for the confirmation of the date and type of appointment.',
+            'Your appointment request with Ticket Number $newControlNumber has been submitted successfully.',
         type: 'appointment',
         controlNumber: newControlNumber,
       );
 
-      // Notify head lawyers
+      // Send notifications to all head lawyers
       final headLawyersSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('member_type', isEqualTo: 'head')
@@ -934,24 +951,21 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       for (final doc in headLawyersSnapshot.docs) {
         await _sendNotification(
           uid: doc.id,
-          message:
-              'A new appointment request has been submitted by $fullName with Ticket Number $newControlNumber and is awaiting your approval.',
+          message: 'A new appointment request has been submitted by $fullName.',
           type: 'appointment',
           controlNumber: newControlNumber,
         );
       }
 
-      // Update state and UI
+      // Update UI states
       setState(() {
         _hasRequestedNewAppointment = true;
         _lastSubmittedAppointmentControlNumber = newControlNumber;
         _isSubmitting = false;
       });
 
-      // Show success message
       await _showSuccessMessage();
     } catch (error) {
-      // Handle error and reset submitting state
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${error.toString()}')),
       );
