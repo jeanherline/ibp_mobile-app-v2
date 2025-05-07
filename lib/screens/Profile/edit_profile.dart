@@ -109,7 +109,17 @@ class _EditProfileState extends State<EditProfile> {
           _employerNameController.text = data['employerName'] ?? '';
           _employerAddressController.text = data['employerAddress'] ?? '';
           _monthlyIncomeController.text = data['monthlyIncome'] ?? '';
-          _selectedEmploymentType = data['employmentType'] ?? 'Select';
+          const validEmploymentTypes = [
+            'Lokal na Trabaho (Local Employer/Agency)',
+            'Dayuhang Amo (Foreign Employer)',
+            'Sa sarili nagttrabaho (Self-Employed)',
+            'Iba pa (Others)',
+            'N/A'
+          ];
+          final fetchedType = data['employmentType'] ?? 'Select';
+          _selectedEmploymentType =
+              validEmploymentTypes.contains(fetchedType) ? fetchedType : null;
+
           _addressController.text = data['address'] ?? '';
           _childrenNamesAgesController.text = data['childrenNamesAges'] ?? '';
 
@@ -537,10 +547,10 @@ class _EditProfileState extends State<EditProfile> {
                     _selectedEmploymentType,
                     required: true,
                     [
-                      'Lokal na Trabaho',
-                      'Dayuhang Amo',
-                      'Self-Employed',
-                      'Iba pa',
+                      'Lokal na Trabaho (Local Employer/Agency)',
+                      'Dayuhang Amo (Foreign Employer)',
+                      'Sa sarili nagttrabaho (Self-Employed)',
+                      'Iba pa (Others)',
                       'N/A'
                     ],
                     (value) {
@@ -963,7 +973,12 @@ class _EditProfileState extends State<EditProfile> {
         items: items
             .map((item) => DropdownMenuItem(
                   value: item,
-                  child: Text(item),
+                  child: Text(
+                    item,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 15), // You can tweak this if needed
+                  ),
                 ))
             .toList(),
         onChanged: onChanged,

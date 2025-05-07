@@ -320,14 +320,19 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       mostRecentReschedule['rescheduleReason'];
                 }
 
-                final userFullName = appointmentDetails['applicantProfile']
-                        ['fullName'] ??
-                    'Guest User';
-                final userEmail = appointmentDetails['applicantProfile']
-                        ['email'] ??
-                    'guest@example.com';
+                final userProfile = appointmentDetails['applicantProfile'];
+                final userFullName =
+                    userProfile != null && userProfile['fullName'] != null
+                        ? userProfile['fullName']
+                        : 'Guest User';
+
+                final userEmail =
+                    userProfile != null && userProfile['email'] != null
+                        ? userProfile['email']
+                        : 'guest@example.com';
+
                 final userPhotoUrl =
-                    appointmentDetails['applicantProfile']['photo_url'];
+                    userProfile != null ? userProfile['photo_url'] : null;
 
                 final meetingPassword =
                     appointmentDetails['appointmentDetails']['meetingPass'];

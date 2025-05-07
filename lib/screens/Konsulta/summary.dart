@@ -383,6 +383,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                 'updatedTime': FieldValue.serverTimestamp(),
                                 'read': 'false',
                                 'qrCode': qrCodeUrl,
+                                'apptType': 'Via App',
                               },
                               'legalAssistanceRequested': {
                                 'selectedAssistanceType':
@@ -617,7 +618,7 @@ Future<void> _saveSummaryForm(BuildContext context) async {
         'newRequest': false,
         'requestReason': '',
         'appointmentDate': null,
-        'apptType': 'Walk-in',
+        'apptType': 'Via App',
         'createdDate': FieldValue.serverTimestamp(),
         'qrCode': '', // optionally generate QR
         'apptRating': null,

@@ -7,6 +7,7 @@ import 'package:ibp_app_ver2/screens/laws_jurisprudence.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:ibp_app_ver2/navbar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:ibp_app_ver2/screens/news_webview.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required int activeIndex});
@@ -450,15 +451,27 @@ class _HomeState extends State<Home> {
                               },
                             ),
                             _buildIconOption(
-                              icon: FontAwesomeIcons.solidNewspaper,
-                              label: 'Mga Batas',
+                              icon: FontAwesomeIcons.landmark,
+                              label: 'Batas',
                               onTap: () {
                                 _showDisclaimerModal(context);
                               },
                             ),
                             _buildIconOption(
+                              icon: FontAwesomeIcons.solidNewspaper,
+                              label: 'Pahayagan',
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const NewsWebView()),
+                                );
+                              },
+                            ),
+                            _buildIconOption(
                               icon: FontAwesomeIcons.headset,
-                              label: 'Magtanong',
+                              label: 'Tanong',
                               onTap: () {
                                 Navigator.push(
                                   context,

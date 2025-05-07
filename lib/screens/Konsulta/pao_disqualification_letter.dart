@@ -493,7 +493,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         'appointmentDetails': {
           'appointmentStatus': 'pending',
           'controlNumber': controlNumber,
-          'apptType': '',
+          'apptType': 'Via App',
           'createdDate': FieldValue.serverTimestamp(),
           'updatedTime': FieldValue.serverTimestamp(),
           'read': 'false',
