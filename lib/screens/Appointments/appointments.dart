@@ -72,7 +72,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
           FirebaseFirestore.instance.collection('appointments');
 
       final appointmentsSnapshot = appointmentsRef
-          .where('applicantProfile.uid', isEqualTo: userId)
+          .where('appointmentDetails.uid', isEqualTo: userId)
           .orderBy('appointmentDetails.createdDate', descending: true)
           .snapshots();
 

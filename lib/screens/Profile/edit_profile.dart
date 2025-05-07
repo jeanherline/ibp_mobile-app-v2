@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 class EditProfile extends StatefulWidget {
   const EditProfile({super.key});
@@ -23,11 +25,35 @@ class _EditProfileState extends State<EditProfile> {
   final TextEditingController _spouseController = TextEditingController();
   final TextEditingController _spouseOccupationController =
       TextEditingController();
+  final TextEditingController _occupationController = TextEditingController();
+  final TextEditingController _employerNameController = TextEditingController();
+  final TextEditingController _employerAddressController =
+      TextEditingController();
+  final TextEditingController _monthlyIncomeController =
+      TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _childrenNamesAgesController =
+      TextEditingController();
+
+  String _barangayImageUrl = '';
+  String _dswdImageUrl = '';
+  String _paoImageUrl = '';
+
+  File? _barangayImage;
+  File? _dswdImage;
+  File? _paoImage;
 
   String _photoUrl = '';
   DateTime _selectedDate = DateTime.now();
-  String _selectedCity = 'Angat';
-  String _selectedGender = 'Male';
+  String? _selectedGender;
+  String? _selectedMaritalStatus;
+  String? _selectedEmploymentType;
+  String? _selectedCity;
+
+  DateTime? _barangayUploadDate;
+  DateTime? _dswdUploadDate;
+  DateTime? _paoUploadDate;
+
   File? _imageFile;
   bool _isUploading = false;
   bool _hasChanges = false;
@@ -60,11 +86,32 @@ class _EditProfileState extends State<EditProfile> {
             _dobController.text =
                 DateFormat('yyyy-MM-dd').format(_selectedDate);
           }
-          _selectedCity = data['city'] ?? 'Angat';
+          _selectedCity = data['city'] ?? 'Select';
           _phoneController.text = data['phone'] ?? '';
-          _selectedGender = data['gender'] ?? 'Male';
+          _selectedGender = data['gender'] ?? 'Select';
           _spouseController.text = data['spouse'] ?? '';
           _spouseOccupationController.text = data['spouseOccupation'] ?? '';
+          _selectedMaritalStatus = data['maritalStatus'] ?? 'Select';
+          final uploadedImages = data['uploadedImages'] ?? {};
+          _barangayImageUrl = uploadedImages['barangayImageUrl'] ?? '';
+          _dswdImageUrl = uploadedImages['dswdImageUrl'] ?? '';
+          _paoImageUrl = uploadedImages['paoImageUrl'] ?? '';
+          _barangayUploadDate =
+              (uploadedImages['barangayImageUrlDateUploaded'] as Timestamp?)
+                  ?.toDate();
+          _dswdUploadDate =
+              (uploadedImages['dswdImageUrlDateUploaded'] as Timestamp?)
+                  ?.toDate();
+          _paoUploadDate =
+              (uploadedImages['paoImageUrlDateUploaded'] as Timestamp?)
+                  ?.toDate();
+          _occupationController.text = data['occupation'] ?? '';
+          _employerNameController.text = data['employerName'] ?? '';
+          _employerAddressController.text = data['employerAddress'] ?? '';
+          _monthlyIncomeController.text = data['monthlyIncome'] ?? '';
+          _selectedEmploymentType = data['employmentType'] ?? 'Select';
+          _addressController.text = data['address'] ?? '';
+          _childrenNamesAgesController.text = data['childrenNamesAges'] ?? '';
 
           _originalData = {
             'photo_url': _photoUrl,
@@ -77,32 +124,83 @@ class _EditProfileState extends State<EditProfile> {
             'spouse': _spouseController.text,
             'spouseOccupation': _spouseOccupationController.text,
             'city': _selectedCity,
+            'maritalStatus': _selectedMaritalStatus,
+            'occupation': _occupationController.text,
+            'employerName': _employerNameController.text,
+            'employerAddress': _employerAddressController.text,
+            'monthlyIncome': _monthlyIncomeController.text,
+            'employmentType': _selectedEmploymentType,
+            'address': _addressController.text,
+            'childrenNamesAges': _selectedMaritalStatus == 'Single'
+                ? 'N/A'
+                : _childrenNamesAgesController.text,
+            'uploadedImages': {
+              'barangayImageUrl': _barangayImageUrl,
+              'barangayImageUrlDateUploaded': _barangayUploadDate,
+              'dswdImageUrl': _dswdImageUrl,
+              'dswdImageUrlDateUploaded': _dswdUploadDate,
+              'paoImageUrl': _paoImageUrl,
+              'paoImageUrlDateUploaded': _paoUploadDate,
+            }
           };
+
           _hasChanges = false; // Initially disable the button
         });
       }
     }
   }
 
+  Future<Map<String, dynamic>> _uploadDocument(
+      File file, String pathLabel) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return {};
+
+    final now = DateTime.now();
+    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(now);
+    final storageRef = FirebaseStorage.instance.ref().child(
+          'documents/${user.uid}/${pathLabel}_$timestamp.png',
+        );
+
+    await storageRef.putFile(file);
+    final downloadUrl = await storageRef.getDownloadURL();
+
+    return {
+      'url': downloadUrl,
+      'date': Timestamp.now(),
+    };
+  }
+
   void _checkForChanges() {
     // This method will now check every single field, including the image selection
     Map<String, dynamic> updatedData = {
-      'photo_url':
-          _imageFile != null ? 'new_image' : _photoUrl, // Track new image
       'display_name': _displayNameController.text,
       'middle_name': _middleNameController.text,
       'last_name': _lastNameController.text,
-      'dob': _dobController.text,
+      'dob': Timestamp.fromDate(_selectedDate),
       'phone': _phoneController.text,
       'gender': _selectedGender,
       'spouse': _spouseController.text,
       'spouseOccupation': _spouseOccupationController.text,
       'city': _selectedCity,
+      'photo_url': _photoUrl,
+      'maritalStatus': _selectedMaritalStatus,
+      'occupation': _occupationController.text,
+      'employerName': _employerNameController.text,
+      'employerAddress': _employerAddressController.text,
+      'monthlyIncome': _monthlyIncomeController.text,
+      'employmentType': _selectedEmploymentType,
+      'address': _addressController.text,
+      'childrenNamesAges': _selectedMaritalStatus == 'Single'
+          ? 'N/A'
+          : _childrenNamesAgesController.text,
     };
 
     setState(() {
-      _hasChanges =
-          !_mapEquals(_originalData, updatedData) || _imageFile != null;
+      _hasChanges = !_mapEquals(_originalData, updatedData) ||
+          _imageFile != null ||
+          _barangayImage != null ||
+          _dswdImage != null ||
+          _paoImage != null;
     });
   }
 
@@ -196,6 +294,52 @@ class _EditProfileState extends State<EditProfile> {
     return null;
   }
 
+  Widget _buildMultilineTextField(
+    String label,
+    TextEditingController controller, {
+    bool required = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextFormField(
+        controller: controller,
+        onChanged: (value) => _checkForChanges(),
+        maxLines: 3,
+        validator: required
+            ? (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter $label';
+                }
+                return null;
+              }
+            : null,
+        decoration: InputDecoration(
+          label: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.black, fontSize: 16.0),
+              children: required
+                  ? [
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: Colors.red, fontSize: 16.0),
+                      )
+                    ]
+                  : [],
+            ),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF5F5F5),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -251,14 +395,18 @@ class _EditProfileState extends State<EditProfile> {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildTextField('First Name', _displayNameController),
+              _buildTextField('First Name', _displayNameController,
+                  required: true),
               _buildTextField('Middle Name', _middleNameController),
-              _buildTextField('Last Name', _lastNameController),
-              _buildDateField('Date of Birth', _dobController, context),
-              _buildPhoneField('Phone Number', _phoneController),
+              _buildTextField('Last Name', _lastNameController, required: true),
+              _buildDateField('Date of Birth', _dobController, context,
+                  required: true),
+              _buildPhoneField('Phone Number', _phoneController,
+                  required: true),
               _buildDropdown(
                 'Gender',
                 _selectedGender,
+                required: true,
                 ['Male', 'Female', 'Other'],
                 (newValue) {
                   setState(() {
@@ -267,8 +415,143 @@ class _EditProfileState extends State<EditProfile> {
                   });
                 },
               ),
-              _buildTextField('Spouse Name', _spouseController),
-              _buildTextField('Spouse Occupation', _spouseOccupationController),
+              _buildDropdown(
+                'Marital Status',
+                _selectedMaritalStatus,
+                ['Single', 'Married', 'Widowed', 'Separated'],
+                (newValue) {
+                  setState(() {
+                    _selectedMaritalStatus = newValue!;
+                    if (_selectedMaritalStatus == 'Single') {
+                      _spouseController.text = 'N/A';
+                      _spouseOccupationController.text = 'N/A';
+                      _childrenNamesAgesController.text = 'N/A';
+                    } else {
+                      _spouseController.text = '';
+                      _spouseOccupationController.text = '';
+                      _childrenNamesAgesController.text = '';
+                    }
+
+                    _checkForChanges();
+                  });
+                },
+                required: true,
+              ),
+              _buildTextField('Street Address', _addressController,
+                  required: true),
+              if (_selectedMaritalStatus != 'Single')
+                _buildMultilineTextField(
+                  'Children\'s Names and Ages',
+                  _childrenNamesAgesController,
+                  required: true,
+                ),
+              if (_selectedMaritalStatus == 'Single') ...[
+                const SizedBox(), // Hides spouse fields
+              ] else ...[
+                _buildTextField('Spouse Name', _spouseController,
+                    required: true),
+                _buildTextField(
+                    'Spouse Occupation', _spouseOccupationController,
+                    required: true),
+              ],
+              _buildTextField(
+                'Occupation',
+                _occupationController,
+                required: true,
+                showNaButton: true,
+                onNaPressed: () {
+                  setState(() {
+                    _occupationController.text = 'N/A';
+                  });
+                },
+              ),
+              _buildTextField(
+                'Employer Name',
+                _employerNameController,
+                required: true,
+                showNaButton: true,
+                onNaPressed: () {
+                  setState(() {
+                    _employerNameController.text = 'N/A';
+                  });
+                },
+              ),
+              _buildTextField(
+                'Employer Address',
+                _employerAddressController,
+                required: true,
+                showNaButton: true,
+                onNaPressed: () {
+                  setState(() {
+                    _employerAddressController.text = 'N/A';
+                  });
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: TextFormField(
+                  controller: _monthlyIncomeController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^[\d,]*$')),
+                  ],
+                  onChanged: (value) => _checkForChanges(),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your monthly income';
+                    }
+                    if (!RegExp(r'^\d+(,\d{3})*$').hasMatch(value)) {
+                      return 'Enter a valid number like 10,000';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    label: RichText(
+                      text: const TextSpan(
+                        text: 'Monthly Income',
+                        style: TextStyle(color: Colors.black, fontSize: 16.0),
+                        children: [
+                          TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red, fontSize: 16.0),
+                          )
+                        ],
+                      ),
+                    ),
+                    prefixText: '₱ ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF5F5F5),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 16),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDropdown(
+                    'Kind of Employment',
+                    _selectedEmploymentType,
+                    required: true,
+                    [
+                      'Lokal na Trabaho',
+                      'Dayuhang Amo',
+                      'Self-Employed',
+                      'Iba pa',
+                      'N/A'
+                    ],
+                    (value) {
+                      setState(() {
+                        _selectedEmploymentType = value!;
+                        _checkForChanges();
+                      });
+                    },
+                  ),
+                ],
+              ),
               _buildDropdown(
                 'City',
                 _selectedCity,
@@ -301,7 +584,197 @@ class _EditProfileState extends State<EditProfile> {
                     _checkForChanges();
                   });
                 },
+                required: true,
               ),
+              _buildUploadButton(
+                "Brgy. Certificate of Indigency",
+                _barangayImage,
+                context,
+                imageUrl: _barangayImageUrl,
+                uploadDate: _barangayUploadDate,
+                key: ValueKey(_barangayUploadDate?.toIso8601String()),
+                () async {
+                  await showModalBottomSheet<ImageSource>(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (context) => SafeArea(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        height: 190, // ✅ increase modal height
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Center(
+                              child: Text(
+                                'Pumili',
+                                style: TextStyle(
+                                  fontSize: 18, // ✅ make font 18px
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ListTile(
+                              title: const Text('Open Camera'),
+                              onTap: () =>
+                                  Navigator.pop(context, ImageSource.camera),
+                            ),
+                            ListTile(
+                              title: const Text('Open Gallery'),
+                              onTap: () =>
+                                  Navigator.pop(context, ImageSource.gallery),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ).then((source) async {
+                    if (source != null) {
+                      final picked =
+                          await ImagePicker().pickImage(source: source);
+                      if (picked != null) {
+                        final tempDir = await getTemporaryDirectory();
+                        final targetPath =
+                            '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
+                        final newImage =
+                            await File(picked.path).copy(targetPath);
+                        setState(() {
+                          _barangayImage = newImage;
+                          _checkForChanges();
+                        });
+                      }
+                    }
+                  });
+                },
+              ),
+              _buildUploadButton(
+                'DSWD Certificate of Indigency',
+                _dswdImage,
+                context,
+                imageUrl: _dswdImageUrl,
+                uploadDate: _dswdUploadDate,
+                key: ValueKey(_dswdUploadDate?.toIso8601String()),
+                () async {
+                  await showModalBottomSheet<ImageSource>(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (context) => SafeArea(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        height: 190, // ✅ increase modal height
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Center(
+                              child: Text(
+                                'Pumili',
+                                style: TextStyle(
+                                  fontSize: 18, // ✅ make font 18px
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ListTile(
+                              title: const Text('Open Camera'),
+                              onTap: () =>
+                                  Navigator.pop(context, ImageSource.camera),
+                            ),
+                            ListTile(
+                              title: const Text('Open Gallery'),
+                              onTap: () =>
+                                  Navigator.pop(context, ImageSource.gallery),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ).then((source) async {
+                    if (source != null) {
+                      final picked =
+                          await ImagePicker().pickImage(source: source);
+                      if (picked != null) {
+                        final tempDir = await getTemporaryDirectory();
+                        final targetPath =
+                            '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
+                        final newImage =
+                            await File(picked.path).copy(targetPath);
+
+                        setState(() {
+                          _dswdImage = newImage;
+                          _checkForChanges();
+                        });
+                      }
+                    }
+                  });
+                },
+              ),
+              _buildUploadButton(
+                  'PAO Disqualification Letter', _paoImage, context,
+                  imageUrl: _paoImageUrl,
+                  uploadDate: _paoUploadDate,
+                  key: ValueKey(_paoUploadDate?.toIso8601String()), () async {
+                await showModalBottomSheet<ImageSource>(
+                  context: context,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  builder: (context) => SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      height: 190, // ✅ increase modal height
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Center(
+                            child: Text(
+                              'Pumili',
+                              style: TextStyle(
+                                fontSize: 18, // ✅ make font 18px
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ListTile(
+                            title: const Text('Open Camera'),
+                            onTap: () =>
+                                Navigator.pop(context, ImageSource.camera),
+                          ),
+                          ListTile(
+                            title: const Text('Open Gallery'),
+                            onTap: () =>
+                                Navigator.pop(context, ImageSource.gallery),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ).then((source) async {
+                  if (source != null) {
+                    final picked =
+                        await ImagePicker().pickImage(source: source);
+                    if (picked != null) {
+                      final tempDir = await getTemporaryDirectory();
+                      final targetPath =
+                          '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png';
+                      final newImage = await File(picked.path).copy(targetPath);
+
+                      setState(() {
+                        _paoImage = newImage;
+                        _checkForChanges();
+                      });
+                    }
+                  }
+                });
+              }),
               const SizedBox(height: 24),
               _buildSaveButton(),
             ],
@@ -311,21 +784,54 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool required = false,
+    String? prefixText,
+    bool showNaButton = false,
+    VoidCallback? onNaPressed,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: TextFormField(
         controller: controller,
-        onChanged: (value) {
-          _checkForChanges();
-        },
+        onChanged: (value) => _checkForChanges(),
+        validator: required
+            ? (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter $label';
+                }
+                return null;
+              }
+            : null,
         decoration: InputDecoration(
-          labelText: label,
+          label: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.black, fontSize: 16.0),
+              children: required
+                  ? [
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: Colors.red, fontSize: 16.0),
+                      )
+                    ]
+                  : [],
+            ),
+          ),
+          prefixText: prefixText,
+          suffixIcon: showNaButton
+              ? TextButton(
+                  onPressed: onNaPressed,
+                  child: const Text('N/A'),
+                )
+              : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
           ),
           filled: true,
-          fillColor: const Color(0xFFF5F5F5), // Light gray fill for consistency
+          fillColor: const Color(0xFFF5F5F5),
           contentPadding:
               const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
@@ -333,7 +839,8 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
-  Widget _buildPhoneField(String label, TextEditingController controller) {
+  Widget _buildPhoneField(String label, TextEditingController controller,
+      {required bool required}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: TextFormField(
@@ -344,12 +851,18 @@ class _EditProfileState extends State<EditProfile> {
         },
         validator: _validatePhoneNumber,
         decoration: InputDecoration(
-          labelText: label,
-          prefixText:
-              controller.text.isEmpty ? '+63 ' : null, // Prefix if empty
-          prefixStyle: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
+          label: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.black, fontSize: 16),
+              children: required
+                  ? [
+                      TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red, fontSize: 16))
+                    ]
+                  : [],
+            ),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -360,9 +873,9 @@ class _EditProfileState extends State<EditProfile> {
               const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
         onTap: () {
-          // Automatically add +63 if field is empty
-          if (controller.text.isEmpty) {
-            controller.text = '+63 ';
+          // Ensure the prefix "+63" is inserted only once
+          if (!controller.text.startsWith('+63')) {
+            controller.text = '+63';
             controller.selection = TextSelection.fromPosition(
               TextPosition(offset: controller.text.length),
             );
@@ -373,13 +886,26 @@ class _EditProfileState extends State<EditProfile> {
   }
 
   Widget _buildDateField(
-      String label, TextEditingController controller, BuildContext context) {
+      String label, TextEditingController controller, BuildContext context,
+      {required bool required}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: TextFormField(
         controller: controller,
         decoration: InputDecoration(
-          labelText: label,
+          label: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.black, fontSize: 16),
+              children: required
+                  ? [
+                      TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red, fontSize: 16))
+                    ]
+                  : [],
+            ),
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -397,14 +923,35 @@ class _EditProfileState extends State<EditProfile> {
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> items,
-      ValueChanged<String?> onChanged) {
+  Widget _buildDropdown(
+    String label,
+    String? value,
+    List<String> items,
+    ValueChanged<String?> onChanged, {
+    required bool required,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: DropdownButtonFormField<String>(
         value: value,
+        validator: required
+            ? (val) => val == null ? 'Please select $label' : null
+            : null,
         decoration: InputDecoration(
-          labelText: label,
+          label: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.black, fontSize: 16),
+              children: required
+                  ? [
+                      TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: Colors.red, fontSize: 16),
+                      )
+                    ]
+                  : [],
+            ),
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -413,12 +960,12 @@ class _EditProfileState extends State<EditProfile> {
           contentPadding:
               const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
-        items: items.map((String item) {
-          return DropdownMenuItem<String>(
-            value: item,
-            child: Text(item),
-          );
-        }).toList(),
+        items: items
+            .map((item) => DropdownMenuItem(
+                  value: item,
+                  child: Text(item),
+                ))
+            .toList(),
         onChanged: onChanged,
       ),
     );
@@ -478,6 +1025,16 @@ class _EditProfileState extends State<EditProfile> {
       'spouseOccupation': _spouseOccupationController.text,
       'city': _selectedCity,
       'photo_url': _photoUrl,
+      'maritalStatus': _selectedMaritalStatus,
+      'occupation': _occupationController.text,
+      'employerName': _employerNameController.text,
+      'employerAddress': _employerAddressController.text,
+      'monthlyIncome': _monthlyIncomeController.text,
+      'employmentType': _selectedEmploymentType,
+      'address': _addressController.text,
+      'childrenNamesAges': _selectedMaritalStatus == 'Single'
+          ? 'N/A'
+          : _childrenNamesAgesController.text,
     };
 
     // Fetch the most recent login activity for metadata
@@ -506,6 +1063,59 @@ class _EditProfileState extends State<EditProfile> {
         changes[key] = {'oldValue': data[key], 'newValue': value};
       }
     });
+
+    Map<String, dynamic> uploadedImages =
+        Map<String, dynamic>.from(data['uploadedImages'] ?? {});
+
+// Upload & replace only if new file selected
+    if (_barangayImage != null) {
+      final result =
+          await _uploadDocument(_barangayImage!, 'barangayCertificate');
+      uploadedImages['barangayImageUrl'] = result['url'];
+      uploadedImages['barangayImageUrlDateUploaded'] = result['date'];
+      setState(() {
+        _barangayImageUrl = result['url'];
+        _barangayUploadDate = (result['date'] as Timestamp).toDate();
+        _barangayImage = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Barangay Certificate uploaded successfully')),
+      );
+    }
+
+    if (_dswdImage != null) {
+      final result = await _uploadDocument(_dswdImage!, 'dswdCertificate');
+      uploadedImages['dswdImageUrl'] = result['url'];
+      uploadedImages['dswdImageUrlDateUploaded'] = result['date'];
+      setState(() {
+        _dswdImageUrl = result['url'];
+        _dswdUploadDate = (result['date'] as Timestamp).toDate();
+        _dswdImage = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('DSWD Certificate uploaded successfully')),
+      );
+    }
+
+    if (_paoImage != null) {
+      final result = await _uploadDocument(_paoImage!, 'paoDisqualification');
+      uploadedImages['paoImageUrl'] = result['url'];
+      uploadedImages['paoImageUrlDateUploaded'] = result['date'];
+      setState(() {
+        _paoImageUrl = result['url'];
+        _paoUploadDate = (result['date'] as Timestamp).toDate();
+        _paoImage = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PAO Letter uploaded successfully')),
+      );
+    }
+
+// ✅ Always attach to Firestore update
+    updatedData['uploadedImages'] = uploadedImages;
 
     // Update user data in Firestore
     await FirebaseFirestore.instance
@@ -568,4 +1178,130 @@ class _EditProfileState extends State<EditProfile> {
     _spouseOccupationController.dispose();
     super.dispose();
   }
+}
+
+Widget _buildUploadButton(
+  String label,
+  File? file,
+  BuildContext context,
+  VoidCallback onTap, {
+  String? imageUrl,
+  DateTime? uploadDate,
+  required ValueKey<String?> key,
+}) {
+  final bool hasUploadedFile =
+      file != null || (imageUrl != null && imageUrl.isNotEmpty);
+  bool isExpired =
+      uploadDate != null && DateTime.now().difference(uploadDate).inDays > 180;
+
+  if (file != null) {
+    // If a new file is picked, treat it as not expired yet (pending save)
+    isExpired = false;
+  }
+
+  Color bgColor;
+  IconData icon;
+  String buttonText;
+
+  if (isExpired) {
+    bgColor = Colors.red;
+    icon = Icons.error;
+    buttonText = '$label ㄨ Expired';
+  } else if (hasUploadedFile) {
+    bgColor = Colors.green;
+    icon = Icons.check_circle;
+    buttonText = '$label ✓';
+  } else {
+    bgColor = Colors.blue;
+    icon = Icons.upload_file;
+    buttonText = label;
+  }
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              if (hasUploadedFile) {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) {
+                    return SafeArea(
+                      child: Wrap(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.image),
+                            title: const Text('View Image'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              showDialog(
+                                context: context,
+                                builder: (_) => Dialog(
+                                  backgroundColor: Colors.black87,
+                                  insetPadding: const EdgeInsets.all(20),
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.of(context).pop(),
+                                    child: InteractiveViewer(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: file != null
+                                            ? Image.file(file)
+                                            : Image.network(
+                                                imageUrl!,
+                                                fit: BoxFit.contain,
+                                                loadingBuilder:
+                                                    (context, child, progress) {
+                                                  if (progress == null)
+                                                    return child;
+                                                  return const Center(
+                                                      child:
+                                                          CircularProgressIndicator());
+                                                },
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    const Text(
+                                                        'Failed to load image',
+                                                        style: TextStyle(
+                                                            color: Colors.red)),
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.upload),
+                            title: const Text('Reupload'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              onTap(); // trigger picker again
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              } else {
+                onTap(); // open picker for first upload
+              }
+            },
+            icon: Icon(icon),
+            label: Text(buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

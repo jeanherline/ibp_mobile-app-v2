@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ibp_app_ver2/screens/Konsulta/summary.dart';
 import 'package:provider/provider.dart';
 import 'form_state_provider.dart';
 import 'barangay_certificate_of_indigency.dart';
@@ -84,12 +85,12 @@ class _NatureOfLegalAssistanceRequestedState
                 children: [
                   const SizedBox(height: 10),
                   const Center(
-                    child: CustomProgressBar(currentStep: 2, totalSteps: 6),
+                    child: CustomProgressBar(currentStep: 0, totalSteps: 3),
                   ),
                   const SizedBox(height: 20),
                   Center(
                     child: Text(
-                      'Nature of Legal Assistance Requested',
+                      'Nature of Legal Assistance',
                       style: TextStyle(
                         fontSize: screenWidth * 0.05,
                         fontWeight: FontWeight.bold,
@@ -102,7 +103,7 @@ class _NatureOfLegalAssistanceRequestedState
                     'Nature of Legal assistance',
                     assistanceOptions,
                     _selectedAssistanceType,
-                    'Piliin ang klase ng tulong legal (Choose nature of legal assistance)',
+                    'Piliin ang uri ng tulong legal',
                     true,
                     (value) {
                       setState(() {
@@ -116,7 +117,7 @@ class _NatureOfLegalAssistanceRequestedState
                     'Ano ang iyong problema?',
                     'Enter your problem/s or complaint/s',
                     _problemsController,
-                    'Ilagay ang iyong problema (Enter your problem/s or complaint/s)',
+                    'Ilagay ang problema',
                     true,
                     screenWidth,
                   ),
@@ -125,7 +126,7 @@ class _NatureOfLegalAssistanceRequestedState
                     'Bakit o papaano nagkaroon ng ganoong problema?',
                     'Why or how did such problem/s arise?',
                     _problemReasonController,
-                    'Ilagay ang dahilan ng problema (Enter the reason why or how the problem/s arise)',
+                    'Ilagay ang dahilan ng problema',
                     true,
                     screenWidth,
                   ),
@@ -134,7 +135,7 @@ class _NatureOfLegalAssistanceRequestedState
                     'Ano ang mga maaaring solusyon na gusto mong ibigay ng Abogado sa iyo?',
                     'What possible solution/s would you like to be given by the lawyer to you?',
                     _desiredSolutionsController,
-                    'Ilagay ang mga maaaring solusyon (Enter the possible solution/s would you like)',
+                    'Ilagay ang mga solusyon na nais',
                     true,
                     screenWidth,
                   ),
@@ -163,8 +164,7 @@ class _NatureOfLegalAssistanceRequestedState
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const BarangayCertificateOfIndigency(),
+                              builder: (context) => const SummaryScreen(),
                             ),
                           );
                         }

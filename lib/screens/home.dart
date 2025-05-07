@@ -342,9 +342,111 @@ class _HomeState extends State<Home> {
                             _buildIconOption(
                               icon: Icons.gavel_rounded,
                               label: 'Konsulta',
-                              onTap: () {
-                                Navigator.pushNamed(
-                                    context, '/applicant_profile');
+                              onTap: () async {
+                                User? user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
+                                  final userDoc = await FirebaseFirestore
+                                      .instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .get();
+
+                                  final data = userDoc.data();
+                                  final phone = data?['phone'] ?? '';
+                                  final spouse = data?['spouse'] ?? '';
+                                  final spouseOccupation =
+                                      data?['spouseOccupation'] ?? '';
+                                  final maritalStatus =
+                                      data?['maritalStatus'] ?? '';
+                                  final uploadedImages =
+                                      data?['uploadedImages'] ?? {};
+
+                                  final barangayImageUrl =
+                                      uploadedImages['barangayImageUrl'] ?? '';
+                                  final dswdImageUrl =
+                                      uploadedImages['dswdImageUrl'] ?? '';
+                                  final paoImageUrl =
+                                      uploadedImages['paoImageUrl'] ?? '';
+
+                                  final barangayDate = uploadedImages[
+                                          'barangayImageUrlDateUploaded']
+                                      ?.toDate();
+                                  final dswdDate =
+                                      uploadedImages['dswdImageUrlDateUploaded']
+                                          ?.toDate();
+                                  final paoDate =
+                                      uploadedImages['paoImageUrlDateUploaded']
+                                          ?.toDate();
+
+                                  final now = DateTime.now();
+                                  final sixMonthsAgo =
+                                      now.subtract(const Duration(days: 180));
+
+                                  final isBarangayExpired =
+                                      barangayDate == null ||
+                                          barangayDate.isBefore(sixMonthsAgo);
+                                  final isDswdExpired = dswdDate == null ||
+                                      dswdDate.isBefore(sixMonthsAgo);
+                                  final isPaoExpired = paoDate == null ||
+                                      paoDate.isBefore(sixMonthsAgo);
+
+                                  final address = data?['address'] ?? '';
+                                  final childrenNamesAges =
+                                      data?['childrenNamesAges'] ?? '';
+                                  final profileIncomplete = phone.isEmpty ||
+                                      address.isEmpty || // ✅ always required
+                                      (maritalStatus != 'Single' &&
+                                          (spouse.isEmpty ||
+                                              spouseOccupation.isEmpty ||
+                                              childrenNamesAges
+                                                  .isEmpty // ✅ required if not single
+                                          )) ||
+                                      (data?['occupation'] ?? '').isEmpty ||
+                                      (data?['employerName'] ?? '').isEmpty ||
+                                      (data?['employerAddress'] ?? '')
+                                          .isEmpty ||
+                                      (data?['monthlyIncome'] ?? '').isEmpty ||
+                                      (data?['employmentType'] == null ||
+                                          data?['employmentType'] ==
+                                              'Select') ||
+                                      (data?['city'] == null ||
+                                          data?['city'] == 'Select') ||
+                                      barangayImageUrl.isEmpty ||
+                                      dswdImageUrl.isEmpty ||
+                                      paoImageUrl.isEmpty ||
+                                      isBarangayExpired ||
+                                      isDswdExpired ||
+                                      isPaoExpired;
+
+                                  if (profileIncomplete) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          title: const Text(
+                                              'Kumpletuhin o I-update ang Profile'),
+                                          content: const Text(
+                                            'Siguraduhing kumpleto ang iyong profile kabilang ang address, pangalan at edad ng mga anak (kung hindi single), at ang lahat ng dokumento (Barangay, DSWD, PAO) ay hindi lalagpas sa 6 na buwan mula sa petsa ng pagkaka-upload.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              child:
+                                                  const Text('Ayusin Ngayon'),
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                Navigator.pushNamed(
+                                                    context, '/edit_profile');
+                                              },
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  } else {
+                                    Navigator.pushNamed(context,
+                                        '/nature_of_legal_assistance_requested');
+                                  }
+                                }
                               },
                             ),
                             _buildIconOption(

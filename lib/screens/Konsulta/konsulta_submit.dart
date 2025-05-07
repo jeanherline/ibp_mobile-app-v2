@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ibp_app_ver2/screens/Konsulta/progress_bar.dart';
 import 'package:ibp_app_ver2/screens/home.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -86,6 +87,10 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
+                const Center(
+                  child: CustomProgressBar(currentStep: 2, totalSteps: 3),
+                ),
+                const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -97,14 +102,6 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '(Thank you very much!)',
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.035,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -120,14 +117,6 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      '(Reminder)',
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.035,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -203,8 +192,16 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
+                            return const Column(
+                              children: [
+                                SizedBox(height: 20),
+                                CircularProgressIndicator(), // Show loading spinner
+                                SizedBox(height: 10),
+                                Text(
+                                  'Loading QR Code...',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
                             );
                           } else if (snapshot.hasError) {
                             return const Center(

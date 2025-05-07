@@ -526,16 +526,6 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
-          SettingTile(
-            title: _isGoogleLinked
-                ? 'Unlink Google Account'
-                : 'Connect Google Account',
-            icon: Icons.account_circle,
-            onTap: _isGoogleLinked ? _unlinkGoogleAccount : _linkGoogleAccount,
-            trailing: _isGoogleLinkLoading
-                ? const CircularProgressIndicator()
-                : const Icon(Icons.arrow_forward_ios, color: Color(0xFF580049)),
-          ),
           const SizedBox(height: 24),
           const SectionHeader(title: 'Security'),
           SettingTile(

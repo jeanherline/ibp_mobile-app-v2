@@ -121,7 +121,11 @@ class _LoginState extends State<Login> {
       'uid': userId,
     };
 
-    await FirebaseFirestore.instance.collection('audit_logs').add(auditLog);
+    try {
+      await FirebaseFirestore.instance.collection('audit_logs').add(auditLog);
+    } catch (e) {
+      print('Failed to write audit log: $e');
+    }
   }
 
   Future<void> _trigger2FAPhoneVerification(User user) async {
@@ -265,55 +269,69 @@ class _LoginState extends State<Login> {
         if (isTwoFactorEnabled && !hasLoginActivity) {
           await _trigger2FAPhoneVerification(user);
         } else {
-          // Continue with regular login if 2FA is not required or device is trusted
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'user_status': 'active'});
+          // Only continue if email is verified
+          if (user.emailVerified) {
+            final userRef =
+                FirebaseFirestore.instance.collection('users').doc(user.uid);
+            final userDoc = await userRef.get();
 
-          // Log login activity and trusted device
-          await _logLoginActivityAndTrustedDevice(user);
+            String userStatus = userDoc.data()?['user_status'] ?? 'inactive';
 
-          // Log the audit entry with IP and user agent
-          await _logAuditEntry(user, 'ACCESS', 'Success');
+            // ✅ Automatically activate user if they verified email but are still marked inactive
+            if (userStatus == 'inactive') {
+              await userRef.update({'user_status': 'active'});
+              userStatus = 'active';
+            }
 
-          // Store auth token in SharedPreferences
-          final token = await user.getIdToken();
-          if (token != null) {
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            await prefs.setString('authToken', token);
-            await prefs.setString('userId', user.uid);
-          }
+            if (userStatus == 'active') {
+              await _logLoginActivityAndTrustedDevice(user);
+              await _logAuditEntry(user, 'ACCESS', 'Success');
 
-          // Navigate to home if user is active
-          bool isActive = await checkUserStatus(user.uid);
-          if (isActive) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                  builder: (context) => const Home(activeIndex: 1)),
-            );
+              final token = await user.getIdToken();
+              if (token != null) {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.setString('authToken', token);
+                await prefs.setString('userId', user.uid);
+              }
+
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                    builder: (context) => const Home(activeIndex: 1)),
+              );
+            } else {
+              _showDialog(
+                  'Account Inactive', 'Your account is not yet activated.');
+              await FirebaseAuth.instance.signOut();
+              await _logAuditEntry(user, 'ACCESS', 'Blocked: Inactive account');
+            }
           } else {
-            _showDialog('Sign In Failed', 'Your account is not active.');
-            await _logAuditEntry(user, 'ACCESS', 'Inactive account');
+            _showDialog('Email Not Verified',
+                'Please verify your email before logging in.');
+            await FirebaseAuth.instance.signOut();
           }
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message;
+      String title = 'Sign In Failed';
+      String message = 'An unknown error occurred.';
+
       switch (e.code) {
         case 'user-not-found':
+          title = 'Email Not Found';
           message = 'No user found for that email.';
           await _logAuditEntry(null, 'user_not_found', 'Failed');
           break;
         case 'wrong-password':
+          title = 'Incorrect Password';
           message = 'Wrong password provided.';
           await _logAuditEntry(null, 'wrong_password', 'Failed');
           break;
         default:
-          message = 'An error occurred. Please try again.';
+          title = 'Login Error';
+          message = e.message ?? 'An error occurred. Please try again.';
           await _logAuditEntry(null, 'unknown_error', 'Failed');
       }
-      _showDialog('Sign In Failed', message);
+      _showDialog(title, message);
     } finally {
       setState(() {
         _isLoading = false;
@@ -346,7 +364,7 @@ class _LoginState extends State<Login> {
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       User? user = userCredential.user;
-      if (user != null) {
+      if (user != null && user.emailVerified) {
         await _logLoginActivityAndTrustedDevice(user);
 
         final token = await user.getIdToken();

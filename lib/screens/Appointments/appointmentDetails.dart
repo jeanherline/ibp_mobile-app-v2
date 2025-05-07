@@ -34,6 +34,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   @override
   void initState() {
     super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _fetchUserFullName(currentUser.uid);
+    }
     _checkIfAppointmentAlreadyRequested();
   }
 
@@ -83,6 +87,19 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         _lastSubmittedAppointmentControlNumber = widget.controlNumber;
       });
     }
+  }
+
+  Future<void> _fetchUserFullName(String uid) async {
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    final userData = userDoc.data();
+    final fullName = userData != null
+        ? '${userData['display_name'] ?? ''} ${userData['middle_name'] ?? ''} ${userData['last_name'] ?? ''}'
+            .trim()
+        : 'Unknown User';
+
+    print(fullName); // Or use it in your logic
   }
 
   Future<void> _showSuccessMessage() async {
@@ -754,7 +771,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                               _formKey.currentState!.save();
                               Navigator.pop(context);
                               await _requestAnotherAppointment(
-                                  appointmentDetails, fullName);
+                                  appointmentDetails);
                               setState(() {
                                 _selectedFile = null;
                                 _reason = '';
@@ -792,7 +809,18 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   }
 
   Future<void> _requestAnotherAppointment(
-      Map<String, dynamic> appointmentDetails, String fullName) async {
+      Map<String, dynamic> appointmentDetails) async {
+    final uid = appointmentDetails['appointmentDetails']['uid'];
+
+    // Get full name from users collection using UID
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final userData = userDoc.data();
+    final fullName = userData != null
+        ? '${userData['display_name'] ?? ''} ${userData['middle_name'] ?? ''} ${userData['last_name'] ?? ''}'
+            .trim()
+        : 'Unknown User';
+
     if (_isSubmitting) return;
 
     setState(() {
@@ -803,10 +831,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     String? fileUrl;
 
     try {
-      // Fetch the latest login activity data
-      final loginActivitySnapshot = await FirebaseFirestore.instance
+      // Fetch latest login activity
+      final loginSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(appointmentDetails['applicantProfile']['uid'])
+          .doc(uid)
           .collection('loginActivity')
           .orderBy('loginTime', descending: true)
           .limit(1)
@@ -815,27 +843,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       String ipAddress = 'Unknown';
       String userAgent = 'Unknown';
 
-      if (loginActivitySnapshot.docs.isNotEmpty) {
-        final latestLoginData = loginActivitySnapshot.docs.first.data();
-        ipAddress = latestLoginData['ipAddress'] ?? 'Unknown';
-        userAgent = latestLoginData['deviceName'] ?? 'Unknown';
+      if (loginSnapshot.docs.isNotEmpty) {
+        final loginData = loginSnapshot.docs.first.data();
+        ipAddress = loginData['ipAddress'] ?? 'Unknown';
+        userAgent = loginData['deviceName'] ?? 'Unknown';
       }
 
-      // Upload file if a file is selected
+      // Upload file if selected
       if (_selectedFile != null) {
         fileUrl = await _uploadFileToStorage(
             _selectedFile!, newControlNumber, fullName);
-
-        if (fileUrl == null) {
-          throw Exception('Failed to upload file.');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('File uploaded successfully.')),
-          );
-        }
+        if (fileUrl == null) throw Exception('Failed to upload file.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File uploaded successfully.')),
+        );
       }
 
-      // Update the current appointment with the necessary follow-up data
+      // Update current appointment to mark as new request
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(widget.controlNumber)
@@ -846,72 +870,49 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         'uploadedImages.newRequestUrl': fileUrl ?? '',
       });
 
-      // Generate and save the new QR code URL
+      // Generate QR code
       final qrCodeImageUrl = await _generateQrCodeImageUrl(newControlNumber);
 
-      // Prepare the data for the new appointment document
-      Map<String, dynamic> newAppointmentData = {
-        'applicantProfile':
-            Map<String, dynamic>.from(appointmentDetails['applicantProfile']),
-        'employmentProfile':
-            Map<String, dynamic>.from(appointmentDetails['employmentProfile']),
-        'legalAssistanceRequested': Map<String, dynamic>.from(
-            appointmentDetails['legalAssistanceRequested']),
-        'uploadedImages': {
-          ...Map<String, dynamic>.from(appointmentDetails['uploadedImages']),
-          'newRequestUrl': fileUrl ?? '', // Include the uploaded file URL
-        },
-        'appointmentDetails': {
-          'controlNumber': newControlNumber,
-          'appointmentStatus': 'pending',
-          'qrCode': qrCodeImageUrl,
-          'createdDate': FieldValue.serverTimestamp(),
-          'updatedTime': FieldValue.serverTimestamp(),
-          'requestReason': _reason,
-        },
-      };
-
-      // Save the new appointment document with the new control number as ID
+      // Create new appointment
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(newControlNumber)
-          .set(newAppointmentData);
-
-      // Add audit log for the original appointment update
-      await FirebaseFirestore.instance.collection('audit_logs').add({
-        'actionType': 'UPDATE',
-        'timestamp': FieldValue.serverTimestamp(),
-        'uid': appointmentDetails['applicantProfile']['uid'],
-        'changes': {
-          'appointmentDetails.newRequest': {
-            'oldValue': false,
-            'newValue': true,
-          },
-          'appointmentDetails.newControlNumber': {
-            'oldValue': widget.controlNumber,
-            'newValue': newControlNumber,
-          },
-          'appointmentDetails.requestReason': {
-            'oldValue': null,
-            'newValue': _reason,
-          },
-          'uploadedImages.newRequestUrl': {
-            'oldValue': null,
-            'newValue': fileUrl ?? '',
-          },
+          .set({
+        'read': false,
+        'rating': null,
+        'appointmentDetails': {
+          'uid': uid,
+          'appointmentStatus': 'pending',
+          'controlNumber': newControlNumber,
+          'newRequest': false,
+          'requestReason': _reason,
+          'appointmentDate': null,
+          'apptType': null,
+          'createdDate': FieldValue.serverTimestamp(),
+          'updatedTime': FieldValue.serverTimestamp(),
+          'qrCode': qrCodeImageUrl,
+          'apptRating': null,
+          'refuseReason': null,
         },
-        'affectedData': {
-          'targetUserId': appointmentDetails['applicantProfile']['uid'],
-          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
+        'legalAssistanceRequested': Map<String, dynamic>.from(
+            appointmentDetails['legalAssistanceRequested']),
+        'uploadedImages': {
+          'newRequestUrl': fileUrl ?? '',
+          'proceedingFileUrl': '',
         },
-        'metadata': {'ipAddress': ipAddress, 'userAgent': userAgent},
+        'rescheduleHistory': {
+          'rescheduleAppointmentType': null,
+          'rescheduleDate': null,
+          'rescheduleReason': null,
+          'rescheduleTimestamp': null,
+        },
       });
 
-      // Add audit log for the new appointment creation
+      // Audit logs
       await FirebaseFirestore.instance.collection('audit_logs').add({
         'actionType': 'CREATE',
         'timestamp': FieldValue.serverTimestamp(),
-        'uid': appointmentDetails['applicantProfile']['uid'],
+        'uid': uid,
         'changes': {
           'appointmentDetails.controlNumber': {
             'oldValue': null,
@@ -927,22 +928,22 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           },
         },
         'affectedData': {
-          'targetUserId': appointmentDetails['applicantProfile']['uid'],
-          'targetUserName': appointmentDetails['applicantProfile']['fullName'],
+          'targetUserId': uid,
+          'targetUserName': fullName,
         },
         'metadata': {'ipAddress': ipAddress, 'userAgent': userAgent},
       });
 
-      // Send notification to the user and head lawyers
+      // Send notifications
       await _sendNotification(
-        uid: appointmentDetails['applicantProfile']['uid'],
+        uid: uid,
         message:
             'Your appointment request with Ticket Number $newControlNumber has been submitted successfully.',
         type: 'appointment',
         controlNumber: newControlNumber,
       );
 
-      // Send notifications to all head lawyers
+      // Notify all head lawyers
       final headLawyersSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('member_type', isEqualTo: 'head')
@@ -957,7 +958,6 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         );
       }
 
-      // Update UI states
       setState(() {
         _hasRequestedNewAppointment = true;
         _lastSubmittedAppointmentControlNumber = newControlNumber;

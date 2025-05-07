@@ -27,6 +27,8 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
   final TextEditingController _childrenNamesAgesController =
       TextEditingController();
   final TextEditingController _cityController = TextEditingController();
+  final bool _isReadOnly = true; // set to false if you want to toggle later
+
   String? _selectedGender;
   String? _selectedCity;
 
@@ -66,7 +68,9 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
           _selectedGender = userData['gender'] ?? '';
           _spouseNameController.text = userData['spouse'] ?? '';
           _spouseOccupationController.text = userData['spouseOccupation'] ?? '';
-          _addressController.text = '';
+          _addressController.text = userData['address'] ?? '';
+          _childrenNamesAgesController.text =
+              userData['childrenNamesAges'] ?? '';
           _selectedCity = userData['city'] ?? '';
         });
       }
@@ -119,7 +123,7 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                   children: [
                     const SizedBox(height: 10),
                     const Center(
-                      child: CustomProgressBar(currentStep: 0, totalSteps: 6),
+                      child: CustomProgressBar(currentStep: 2, totalSteps: 3),
                     ),
                     const SizedBox(height: 20),
                     Center(
@@ -131,13 +135,58 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Ang mga impormasyong ito ay ',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'read-only',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.red,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '. Kung kailangan baguhin, pakibago muna sa iyong profile.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      '(These fields are read-only. If you need to make changes, please update your profile.)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 20),
                     _buildTextField(
                       'Buong Pangalan',
                       'Full Name',
                       _fullNameController,
-                      'Ilagay ang buong pangalan (Enter full name)',
                       true,
+                      'Ilagay ang buong pangalan (Enter full name)',
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -154,8 +203,8 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                       'Adres o Tinitirahan',
                       'Street Address',
                       _addressController,
-                      'Ilagay ang adres o tinitirahan (Enter full address)',
                       true,
+                      'Ilagay ang adres o tinitirahan (Enter full address)',
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -163,8 +212,9 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                     const SizedBox(height: 20),
                     _buildPhoneNumberField(
                       'Numero ng Telepono',
+                      'Phone Number',
                       _contactNumberController,
-                      'Ilagay ang numero ng telepono (Enter contact number)',
+                      'Ilagay ang iyong aktibong numero',
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -185,10 +235,10 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                     const SizedBox(height: 20),
                     _buildTextField(
                       'Pangalan ng Asawa',
-                      'Name of Spouse',
+                      'Spouse Name',
                       _spouseNameController,
-                      'Ilagay ang pangalan ng asawa (Enter spouse’s name)',
                       false,
+                      'Ilagay ang pangalan ng asawa (Enter spouse’s name)',
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -196,8 +246,8 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                       'Trabaho ng Asawa',
                       'Occupation of Spouse',
                       _spouseOccupationController,
-                      'Ilagay ang trabaho ng asawa (Enter spouse’s occupation)',
                       false,
+                      'Ilagay ang trabaho ng asawa (Enter spouse’s occupation)',
                       screenWidth,
                     ),
                     const SizedBox(height: 20),
@@ -205,8 +255,8 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
                       'Kung kasal, ilagay ang pangalan ng mga anak at edad nila',
                       'If married, write name of children and age',
                       _childrenNamesAgesController,
-                      'Ilagay ang pangalan at edad ng mga anak\n(Enter children’s name and age)',
                       false,
+                      'Ilagay ang pangalan at edad ng mga anak\n(Enter children’s name and age)',
                       screenWidth,
                     ),
                     const SizedBox(height: 30),
@@ -283,12 +333,13 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
   }
 
   Widget _buildTextField(
-      String label,
-      String subLabel,
-      TextEditingController controller,
-      String hintText,
-      bool isRequired,
-      double screenWidth) {
+    String label,
+    String subLabel,
+    TextEditingController controller,
+    bool isRequired,
+    String hintText,
+    double screenWidth,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,18 +347,32 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          readOnly: true,
+          enabled: false,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6), // darker hint
             ),
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
           validator: isRequired
@@ -337,36 +402,35 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
-          readOnly: true,
+          readOnly: true, // always read-only
+          enabled: false,
+
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
-          onTap: () async {
-            DateTime? pickedDate = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(1900),
-              lastDate: DateTime.now(),
-            );
-
-            if (pickedDate != null) {
-              setState(() {
-                controller.text =
-                    "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
-              });
-            }
-          },
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           validator: isRequired
               ? (value) {
                   if (value == null || value.isEmpty) {
@@ -382,47 +446,72 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
 
   Widget _buildPhoneNumberField(
     String label,
+    String subLabel,
     TextEditingController controller,
     String helperText,
     double screenWidth,
   ) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: TextInputType.phone,
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        prefixText: controller.text.isEmpty
-            ? '+63 '
-            : null, // Show prefix only if the field is empty
-        prefixStyle: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.w600,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label, subLabel, true, screenWidth),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          readOnly: true,
+          enabled: false,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
+          decoration: InputDecoration(
+            helperText: helperText,
+            hintText: 'Ilagay ang numero ng telepono (Enter contact number)',
+            hintStyle: TextStyle(
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.black.withOpacity(0.6),
+            ),
+            prefixText: controller.text.isEmpty ? '+63 ' : null,
+            prefixStyle: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF580049)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+          ),
+          onTap: () {
+            if (controller.text.isEmpty) {
+              controller.text = '+63 ';
+            }
+          },
+          onChanged: (value) {
+            if (value != '+63 ' && !value.startsWith('+63 ')) {
+              controller.text = '+63 $value';
+              controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: controller.text.length),
+              );
+            }
+          },
         ),
-        hintText: 'Ilagay ang numero ng telepono (Enter contact number)',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.black12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF580049)),
-        ),
-      ),
-      onTap: () {
-        if (controller.text.isEmpty) {
-          controller.text = '+63 ';
-        }
-      },
-      onChanged: (value) {
-        // Update the field to remove +63 when already populated
-        if (value != '+63 ' && !value.startsWith('+63 ')) {
-          controller.text = '+63 $value';
-          controller.selection = TextSelection.fromPosition(
-            TextPosition(offset: controller.text.length),
-          );
-        }
-      },
+      ],
     );
   }
 
@@ -475,47 +564,80 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
   }
 
   Widget _buildDropdownField(
-      String label,
-      String subLabel,
-      List<String> items,
-      String? selectedItem,
-      String hintText,
-      bool isRequired,
-      ValueChanged<String?> onChanged,
-      double screenWidth) {
+    String label,
+    String subLabel,
+    List<String> items,
+    String? selectedItem,
+    String hintText,
+    bool isRequired,
+    ValueChanged<String?> onChanged,
+    double screenWidth,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label, subLabel, isRequired, screenWidth),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
+          value: selectedItem,
+          onChanged: null,
+          disabledHint: selectedItem != null
+              ? Text(
+                  selectedItem,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
+                )
+              : Text(
+                  hintText,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black.withOpacity(0.6),
+                  ),
+                ),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 14.0, // Equal padding for top and bottom
-              horizontal: 12.0,
-            ),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 14.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
           items: items.map((item) {
             return DropdownMenuItem<String>(
               value: item,
-              child: Text(item),
+              child: Text(
+                item,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                ),
+              ),
             );
           }).toList(),
-          value: selectedItem,
-          onChanged: onChanged,
           validator: isRequired
               ? (value) {
-                  if (value == null || value.isEmpty) {
+                  if (!_isReadOnly && (value == null || value.isEmpty)) {
                     return 'This field cannot be empty';
                   }
                   return null;
@@ -527,12 +649,13 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
   }
 
   Widget _buildTextAreaField(
-      String label,
-      String subLabel,
-      TextEditingController controller,
-      String hintText,
-      bool isRequired,
-      double screenWidth) {
+    String label,
+    String subLabel,
+    TextEditingController controller,
+    bool isRequired,
+    String hintText,
+    double screenWidth,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -540,19 +663,33 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          readOnly: true,
+          enabled: false,
           maxLines: 4,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
           validator: isRequired

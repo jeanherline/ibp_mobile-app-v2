@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'form_state_provider.dart';
 import 'nature_of_legal_assitance_requested.dart';
 import 'progress_bar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class EmploymentProfile extends StatefulWidget {
   const EmploymentProfile({super.key});
@@ -33,15 +35,35 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
   @override
   void initState() {
     super.initState();
-    final formState = context.read<FormStateProvider>();
-    _occupationController.text = formState.occupation;
-    _employerNameController.text = formState.employerName;
-    _employerAddressController.text = formState.employerAddress;
-    _monthlyIncomeController.text = formState.monthlyIncome;
-    _selectedEmploymentOption = formState.kindOfEmployment.isNotEmpty &&
-            employmentOptions.contains(formState.kindOfEmployment)
-        ? formState.kindOfEmployment
-        : null;
+    _loadUserEmploymentData();
+  }
+
+  void _loadUserEmploymentData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = doc.data();
+
+    if (data != null) {
+      setState(() {
+        _occupationController.text = data['occupation'] ?? '';
+        _employerNameController.text = data['employerName'] ?? '';
+        _employerAddressController.text = data['employerAddress'] ?? '';
+        _monthlyIncomeController.text = data['monthlyIncome'] ?? '';
+
+        final kind = data['kindOfEmployment'] ?? '';
+        _selectedEmploymentOption =
+            employmentOptions.contains(kind) ? kind : null;
+
+        // Optional: handle employmentType if you have a separate dropdown or field for it
+        // Example:
+        // _selectedEmploymentType = data['employmentType'] ?? '';
+      });
+    }
   }
 
   @override
@@ -111,6 +133,51 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
                         fontSize: screenWidth * 0.035,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Ang mga impormasyong ito ay ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'read-only',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.red,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '. Kung kailangan baguhin, pakibago muna sa iyong profile.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    '(These fields are read-only. If you need to make changes, please update your profile.)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -233,12 +300,13 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
   }
 
   Widget _buildTextField(
-      String label,
-      String subLabel,
-      TextEditingController controller,
-      String hintText,
-      bool isRequired,
-      double screenWidth) {
+    String label,
+    String subLabel,
+    TextEditingController controller,
+    String hintText,
+    bool isRequired,
+    double screenWidth,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -246,18 +314,32 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          readOnly: true,
+          enabled: false,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
           validator: isRequired
@@ -274,12 +356,13 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
   }
 
   Widget _buildNumberField(
-      String label,
-      String subLabel,
-      TextEditingController controller,
-      String hintText,
-      bool isRequired,
-      double screenWidth) {
+    String label,
+    String subLabel,
+    TextEditingController controller,
+    String hintText,
+    bool isRequired,
+    double screenWidth,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -287,18 +370,32 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          readOnly: true,
+          enabled: false,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
           keyboardType: TextInputType.number,
@@ -335,19 +432,33 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: selectedItem,
-          items: items.map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: onChanged,
+          onChanged: null,
+          disabledHint: selectedItem != null
+              ? Text(
+                  selectedItem,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
+                )
+              : Text(
+                  hintText,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black.withOpacity(0.6),
+                  ),
+                ),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
+            hintStyle: TextStyle(
               fontSize: 15,
               fontStyle: FontStyle.italic,
-              color: Colors.grey,
+              color: Colors.black.withOpacity(0.6),
             ),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14.0,
@@ -355,10 +466,29 @@ class _EmploymentProfileState extends State<EmploymentProfile> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black),
             ),
           ),
-          isExpanded: true, // Ensures the dropdown expands to the full width
+          items: items.map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                ),
+              ),
+            );
+          }).toList(),
           validator: isRequired
               ? (value) {
                   if (value == null || value.isEmpty) {
