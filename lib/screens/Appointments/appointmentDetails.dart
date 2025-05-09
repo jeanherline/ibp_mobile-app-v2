@@ -363,9 +363,9 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       const SizedBox(height: 10),
                       Center(
                         child: Text(
-                          appointmentType == 'Online'
-                              ? 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong online na pagkonsulta. Siguraduhing handa ang iyong device at may stable na internet connection bago magsimula ang meeting. Pindutin ang "Join Meeting" kapag handa na upang makapasok sa online consultation.'
-                              : 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at dalhin ang mga hard copy ng mga dokumentong ipinasa online sakaling maaprubahan ang inyong appointment.',
+                          appointmentType == 'Via App'
+                              ? 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong Via App na pagkonsulta. Siguraduhing handa ang iyong device at may stable na internet connection bago magsimula ang meeting. Pindutin ang "Join Meeting" kapag handa na upang makapasok sa Via App consultation.'
+                              : 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at dalhin ang mga hard copy ng mga dokumentong ipinasa Via App sakaling maaprubahan ang inyong appointment.',
                           style: TextStyle(
                             fontSize: screenWidth * 0.04,
                             color: Colors.black,
@@ -461,7 +461,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 : const Center(
                                     child: Text('No QR code available.')),
                             const SizedBox(height: 20),
-                            if (appointmentType == 'Online' &&
+                            if (appointmentType == 'Via App' &&
                                 !missed &&
                                 appointmentStatus != 'done') ...[
                               Row(

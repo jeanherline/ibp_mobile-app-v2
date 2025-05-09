@@ -59,7 +59,7 @@ class _HomeState extends State<Home> {
             child: ListBody(
               children: <Widget>[
                 Text(
-                  'Thank you for using our app, Integrated Bar of the Philippines Electronic Legal Services and Access Malolos Chapter (IBP - ELSA Malolos), which serves as an online appointment booking system for IBP Malolos. Additionally, our app offers web viewing of Jur.ph, an AI-Powered Legal Research Platform in the Philippines. By incorporating Jur.ph into our app, we aim to provide a valuable public service that significantly benefits our users by granting access to essential legal information and resources.\n\n'
+                  'Thank you for using our app, Integrated Bar of the Philippines Electronic Legal Services and Access Malolos Chapter (IBP - ELSA Malolos), which serves as an Via App appointment booking system for IBP Malolos. Additionally, our app offers web viewing of Jur.ph, an AI-Powered Legal Research Platform in the Philippines. By incorporating Jur.ph into our app, we aim to provide a valuable public service that significantly benefits our users by granting access to essential legal information and resources.\n\n'
                   'Our app, IBP - ELSA Malolos, is independent of Jur.ph. Jur.ph retains sole ownership of their content, and our app maintains a separate identity. By including their website, we aim to offer essential legal information and resources as a public service.\n\n'
                   'By incorporating Jur.ph into our app, we aim to:\n\n'
                   'Offer a valuable public service that will significantly benefit our users by providing them with access to essential legal information and resources, including curated laws and jurisprudence in the Philippines.\n\n',
@@ -281,7 +281,7 @@ class _HomeState extends State<Home> {
                         _buildPageItem(
                           title: '|  Mag-book ng appointment:',
                           description:
-                              'Mag-book ng inyong mga appointment online gamit ang aming bagong scheduling module! Pinadadali nito ang proseso sa pamamagitan ng pagbibigay ng malinaw na impormasyon tungkol sa mga kinakailangan.',
+                              'Mag-book ng inyong mga appointment Via App gamit ang aming bagong scheduling module! Pinadadali nito ang proseso sa pamamagitan ng pagbibigay ng malinaw na impormasyon tungkol sa mga kinakailangan.',
                           color: const Color(0xFF221F1F),
                         ),
                         _buildPageItem(

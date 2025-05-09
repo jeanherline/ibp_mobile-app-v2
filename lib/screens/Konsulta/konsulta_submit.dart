@@ -121,7 +121,7 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at i-handa ang mga hard copy ng mga dokumentong ipinasa online sakaling maaprubahan ang inyong appointment.',
+                  'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at i-handa ang mga hard copy ng mga dokumentong ipinasa Via App sakaling maaprubahan ang inyong appointment.',
                   style: TextStyle(
                     fontSize: screenWidth * 0.04,
                     color: Colors.black,
@@ -130,7 +130,7 @@ class _KonsultaSubmitState extends State<KonsultaSubmit> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '(Please wait for the confirmation of the date and type of consultation. Do not forget to save the QR Code and prepare the hard copies of the documents submitted online in case your appointment is approved.)',
+                  '(Please wait for the confirmation of the date and type of consultation. Do not forget to save the QR Code and prepare the hard copies of the documents submitted Via App in case your appointment is approved.)',
                   style: TextStyle(
                     fontSize: screenWidth * 0.035,
                     color: Colors.grey,
