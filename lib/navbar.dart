@@ -5,6 +5,7 @@ import 'package:ibp_app_ver2/screens/Appointments/appointments.dart';
 import 'package:ibp_app_ver2/screens/Notifications/notifications.dart';
 import 'package:ibp_app_ver2/screens/home.dart';
 import 'package:ibp_app_ver2/screens/Profile/profile.dart';
+import 'package:ibp_app_ver2/screens/LegalAi/legal_ai.dart';
 
 class CustomNavigationBar extends StatefulWidget {
   final int activeIndex; // Accept activeIndex from parent screen
@@ -27,179 +28,134 @@ class _CustomNavigationBarState extends State<CustomNavigationBar> {
 
     final userId = currentUser.uid;
 
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return SizedBox(
+      height: 100, // enough height to show overlap above navbar
+      child: Stack(
+        alignment: Alignment.bottomCenter,
         children: [
-          IconButton(
-            icon: Icon(
-              Icons.home,
-              color: widget.activeIndex == 0
-                  ? const Color.fromARGB(255, 79, 134, 216)
-                  : const Color(0xFF580049),
-            ),
-            onPressed: () {
-              if (widget.activeIndex != 0) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const Home(activeIndex: 0),
-                  ),
-                );
-              }
-            },
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.calendar_month,
-                  color: widget.activeIndex == 1
-                      ? const Color.fromARGB(255, 79, 134, 216)
-                      : const Color(0xFF580049),
+          Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
                 ),
-                onPressed: () {
-                  if (widget.activeIndex != 1) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const Appointments(activeIndex: 1),
-                      ),
-                    );
-                  }
-                },
               ),
-              // Stream for unread appointments
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('appointments')
-                    .where('applicantProfile.uid', isEqualTo: userId)
-                    .where('appointmentDetails.read', isEqualTo: false)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  final unreadAppointmentsCount = snapshot.data!.docs.length;
-
-                  return Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$unreadAppointmentsCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications,
-                  color: widget.activeIndex == 2
-                      ? const Color.fromARGB(255, 79, 134, 216)
-                      : const Color(0xFF580049),
-                ),
-                onPressed: () {
-                  if (widget.activeIndex != 2) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const Notifications(activeIndex: 2),
-                      ),
-                    );
-                  }
-                },
-              ),
-              // Stream for unread notifications
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('notifications')
-                    .where('uid', isEqualTo: userId)
-                    .where('read', isEqualTo: false)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  final unreadCount = snapshot.data!.docs.length;
-
-                  return Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 24,
-                        minHeight: 24,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.person,
-              color: widget.activeIndex == 3
-                  ? const Color.fromARGB(255, 79, 134, 216)
-                  : const Color(0xFF580049),
             ),
-            onPressed: () {
-              if (widget.activeIndex != 3) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const Profile(activeIndex: 3),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.home,
+                    color: widget.activeIndex == 0
+                        ? const Color.fromARGB(255, 79, 134, 216)
+                        : const Color(0xFF580049),
                   ),
+                  onPressed: () {
+                    if (widget.activeIndex != 0) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const Home(activeIndex: 0),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.calendar_month,
+                    color: widget.activeIndex == 1
+                        ? const Color.fromARGB(255, 79, 134, 216)
+                        : const Color(0xFF580049),
+                  ),
+                  onPressed: () {
+                    if (widget.activeIndex != 1) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const Appointments(activeIndex: 1),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(width: 48),
+                IconButton(
+                  icon: Icon(
+                    Icons.notifications,
+                    color: widget.activeIndex == 2
+                        ? const Color.fromARGB(255, 79, 134, 216)
+                        : const Color(0xFF580049),
+                  ),
+                  onPressed: () {
+                    if (widget.activeIndex != 2) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const Notifications(activeIndex: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.person,
+                    color: widget.activeIndex == 3
+                        ? const Color.fromARGB(255, 79, 134, 216)
+                        : const Color(0xFF580049),
+                  ),
+                  onPressed: () {
+                    if (widget.activeIndex != 3) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const Profile(activeIndex: 3),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Floating circle icon
+          Positioned(
+            bottom: 30,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LegalAi()),
                 );
-              }
-            },
+              },
+              child: Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF580049),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 45, 0, 40),
+                    width: 2, // adjust as needed for subtle or bold border
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.search,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
           ),
         ],
       ),
