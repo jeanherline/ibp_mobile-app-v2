@@ -103,7 +103,7 @@ class _LegalAiState extends State<LegalAi> {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        "model": "gpt-4o-mini", // Change to "gpt-3.5-turbo" if preferred
+        "model": "gpt-4o-mini",
         "messages": [
           {
             "role": "system",
