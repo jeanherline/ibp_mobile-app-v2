@@ -226,7 +226,7 @@ class _ProfileScreenState extends State<Profile> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20.0),
                   child: CircleAvatar(
-                    radius: screenWidth * 0.2,
+                    radius: screenWidth * 0.5 / 3,
                     backgroundImage: _photoUrl.isNotEmpty
                         ? NetworkImage(_photoUrl)
                         : const AssetImage('assets/img/DefaultUserImage.jpg')

@@ -3,7 +3,7 @@
     package="com.mycompany.lawyer">
 
     <application
-        android:label="IBP-ELSA"
+        android:label="PH-ELSA"
         tools:replace="android:label"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"

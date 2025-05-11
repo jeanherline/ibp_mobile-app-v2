@@ -72,6 +72,12 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     setState(() {
       _selectedRating = rating; // Set permanent rating
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Salamat sa iyong rating!'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<void> _checkIfAppointmentAlreadyRequested() async {
@@ -148,44 +154,100 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
     return DateFormat('MMMM d, yyyy \'at\' h:mm a').format(dateTime);
   }
 
-  Future<void> joinMeeting(String controlNumber, String fullName, String email,
-      String? photoUrl) async {
+  Future<void> joinMeeting(String controlNumber) async {
     try {
+      // Get the appointment document
+      final appointmentDoc = await FirebaseFirestore.instance
+          .collection('appointments')
+          .doc(controlNumber)
+          .get();
+
+      if (!appointmentDoc.exists) {
+        print('Appointment not found.');
+        return;
+      }
+
+      final appointmentData = appointmentDoc.data();
+      final uid = appointmentData?['appointmentDetails']?['uid'];
+
+      // Assuming new flattened structure
+
+      if (uid == null || uid.isEmpty) {
+        print('UID not found in appointment.');
+        return;
+      }
+
+      // Fetch user data from users collection
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (!userDoc.exists) {
+        print('User not found.');
+        return;
+      }
+
+      final userData = userDoc.data();
+      final fullName = [
+        userData?['display_name'],
+        userData?['middle_name'],
+        userData?['last_name'],
+        userData?['photoUrl || ""']
+      ].where((name) => name != null && name.toString().isNotEmpty).join(' ');
+
+      final email = userData?['email'] ?? 'guest@example.com';
+      final photoUrl = userData?['photo_url'];
+
+      // Generate JWT token
       final response = await http.get(
         Uri.parse(
-            'https://us-central1-lawyer-app-ed056.cloudfunctions.net/api/generate-jwt?roomName=$controlNumber&isModerator=false'),
+          'https://us-central1-lawyer-app-ed056.cloudfunctions.net/api/generate-jwt?roomName=$controlNumber&isModerator=false',
+        ),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String jwtToken = data['token'];
-
-        var options = JitsiMeetConferenceOptions(
-          serverURL: "https://8x8.vc",
-          room:
-              'vpaas-magic-cookie-ef5ce88c523d41a599c8b1dc5b3ab765/$controlNumber',
-          token: jwtToken,
-          userInfo: JitsiMeetUserInfo(
-            displayName: fullName.isNotEmpty ? fullName : "Guest",
-            email: email.isNotEmpty ? email : "guest@example.com",
-            avatar: photoUrl,
-          ),
-          configOverrides: {
-            "startWithAudioMuted": true,
-            "startWithVideoMuted": true,
-          },
-          featureFlags: {
-            "unsaferoomwarning.enabled": false,
-          },
-        );
-
-        await JitsiMeet().join(options);
-        print('Joined the meeting room: $controlNumber');
-      } else {
+      if (response.statusCode != 200) {
         print('Failed to retrieve JWT: ${response.body}');
+        return;
       }
-    } catch (error) {
-      print('Error joining the meeting: $error');
+
+      final jwtToken = jsonDecode(response.body)['token'];
+
+      // Join Jitsi Meeting
+      var options = JitsiMeetConferenceOptions(
+        serverURL: "https://8x8.vc",
+        room:
+            "vpaas-magic-cookie-ef5ce88c523d41a599c8b1dc5b3ab765/$controlNumber",
+        token: jwtToken,
+        userInfo: JitsiMeetUserInfo(
+          displayName: fullName,
+          email: email,
+          avatar: (photoUrl != null && photoUrl.startsWith('http'))
+              ? photoUrl
+              : null,
+        ),
+        configOverrides: {
+          "startWithAudioMuted": true,
+          "startWithVideoMuted": true,
+        },
+        featureFlags: {
+          "unsaferoomwarning.enabled": false,
+          "welcomepage.enabled": false,
+          "invite.enabled": false,
+          "meeting-password.enabled": false,
+          "recording.enabled": false,
+          "live-streaming.enabled": false,
+          "video-share.enabled": false,
+        },
+      );
+      print('🚀 Launching meeting with:');
+      print('Room: ${options.room}');
+      print('Token: ${options.token}');
+      print(
+          'User: ${options.userInfo?.displayName}, ${options.userInfo?.email}');
+
+      await JitsiMeet().join(options);
+      print('Joined the meeting room: $controlNumber');
+    } catch (e) {
+      print('Error joining the meeting: $e');
     }
   }
 
@@ -303,8 +365,8 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                 final appointmentStatus =
                     appointmentDetails['appointmentDetails']
                         ['appointmentStatus'];
-                final appointmentType =
-                    appointmentDetails['appointmentDetails']['apptType'];
+                final scheduleType =
+                    appointmentDetails['appointmentDetails']['scheduleType'];
                 final appointmentDate =
                     appointmentDetails['appointmentDetails']['appointmentDate'];
 
@@ -334,9 +396,6 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                 final userPhotoUrl =
                     userProfile != null ? userProfile['photo_url'] : null;
 
-                final meetingPassword =
-                    appointmentDetails['appointmentDetails']['meetingPass'];
-
                 bool isMissedAppointment() {
                   final now = DateTime.now();
                   if (appointmentDate != null && appointmentStatus != 'done') {
@@ -363,9 +422,30 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       const SizedBox(height: 10),
                       Center(
                         child: Text(
-                          appointmentType == 'Via App'
-                              ? 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong Via App na pagkonsulta. Siguraduhing handa ang iyong device at may stable na internet connection bago magsimula ang meeting. Pindutin ang "Join Meeting" kapag handa na upang makapasok sa Via App consultation.'
-                              : 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong personal na pagkonsulta. Huwag kalimutang i-save ang QR Code at dalhin ang mga hard copy ng mga dokumentong ipinasa Via App sakaling maaprubahan ang inyong appointment.',
+                          () {
+                            if (appointmentStatus == 'pending') {
+                              return 'Ang inyong appointment ay kasalukuyang nasa pagsusuri. Mangyaring maghintay ng kumpirmasyon mula sa aming tanggapan.';
+                            } else if (appointmentStatus == 'approved') {
+                              return 'Naaprubahan ang inyong appointment. Mangyaring hintayin ang iskedyul ng konsultasyon.';
+                            } else if (appointmentStatus == 'denied' ||
+                                appointmentStatus == 'refused') {
+                              return 'Paumanhin, hindi kayo kwalipikado para sa legal na tulong batay sa impormasyong inyong isinumite.';
+                            } else if (appointmentStatus == 'accepted' ||
+                                appointmentStatus == 'scheduled') {
+                              return scheduleType == 'Online'
+                                  ? 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong online na konsultasyon. Siguraduhing fully charged ang inyong device, may maayos na camera at mikropono, at stable na internet connection bago ang meeting. Kapag kumpirmado na, pindutin ang "Join Meeting" upang makapasok sa inyong konsultasyon.'
+                                  : 'Mangyaring hintayin ang kumpirmasyon ng petsa at oras ng inyong in-person na konsultasyon. Siguraduhing dalhin ang printed na kopya ng inyong QR Code at lahat ng dokumentong in-upload sa app sa araw ng konsultasyon.';
+                            } else if (appointmentStatus == 'missed') {
+                              return 'Hindi kayo naka-attend sa inyong nakatakdang konsultasyon. Mangyaring makipag-ugnayan muli para sa muling pag-schedule.';
+                            } else if (appointmentStatus == 'done') {
+                              return 'Tapos na ang inyong konsultasyon. Lubos po kaming nagpapasalamat sa inyong tiwala. Nawa’y nakatulong kami sa inyong legal na pangangailangan.';
+                            } else if (appointmentStatus ==
+                                'pending_reschedule') {
+                              return 'Natanggap na ang iyong kahilingan para sa bagong iskedyul. Mangyaring hintayin ang kumpirmasyon ng bagong appointment mula sa aming staff.';
+                            } else {
+                              return '';
+                            }
+                          }(),
                           style: TextStyle(
                             fontSize: screenWidth * 0.04,
                             color: Colors.black,
@@ -403,18 +483,21 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
-                                capitalizeFirstLetter(
-                                  appointmentType != null &&
-                                          appointmentType.isNotEmpty
-                                      ? '$appointmentStatus - $appointmentType'
-                                      : appointmentStatus,
-                                ),
+                                appointmentStatus == 'pending_reschedule'
+                                    ? 'Awaiting for Reschedule Approval'
+                                    : scheduleType != null &&
+                                            scheduleType.isNotEmpty
+                                        ? capitalizeFirstLetter(
+                                            '$appointmentStatus - $scheduleType')
+                                        : capitalizeFirstLetter(
+                                            appointmentStatus),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
                                 ),
                               ),
                             ),
+
                             const SizedBox(height: 10),
                             if (appointmentDate != null)
                               Text(
@@ -438,70 +521,31 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
-                            const SizedBox(height: 15),
-                            if (missed)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: const Text(
-                                  'Missed Appointment',
-                                  style: TextStyle(
-                                    color: Color.fromARGB(255, 166, 25, 15),
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 10),
-                            qrCodeUrl != null
-                                ? Image.network(qrCodeUrl)
-                                : const Center(
-                                    child: Text('No QR code available.')),
-                            const SizedBox(height: 20),
-                            if (appointmentType == 'Via App' &&
-                                !missed &&
-                                appointmentStatus != 'done') ...[
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Password: $meetingPassword',
-                                    style: TextStyle(
-                                      fontSize: screenWidth * 0.045,
-                                      fontWeight: FontWeight.normal,
-                                      color: Colors.black,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.copy,
-                                        color: Colors.blue),
-                                    onPressed: () {
-                                      Clipboard.setData(
-                                          ClipboardData(text: meetingPassword));
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Meeting password copied to clipboard')),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
+                            if (scheduleType == 'Online' &&
+                                appointmentStatus != 'done' &&
+                                appointmentStatus != 'missed') ...[
                               const SizedBox(height: 20),
                               ElevatedButton.icon(
-                                onPressed: () {
-                                  joinMeeting(
-                                    widget.controlNumber,
-                                    userFullName,
-                                    userEmail,
-                                    userPhotoUrl,
-                                  );
-                                },
+                                onPressed: (appointmentDate != null &&
+                                        DateTime.now().toLocal().day ==
+                                            appointmentDate
+                                                .toDate()
+                                                .toLocal()
+                                                .day &&
+                                        DateTime.now().toLocal().month ==
+                                            appointmentDate
+                                                .toDate()
+                                                .toLocal()
+                                                .month &&
+                                        DateTime.now().toLocal().year ==
+                                            appointmentDate
+                                                .toDate()
+                                                .toLocal()
+                                                .year)
+                                    ? () {
+                                        joinMeeting(widget.controlNumber);
+                                      }
+                                    : null, // disable if not scheduled for today
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor:
                                       const Color.fromARGB(255, 12, 122, 17),
@@ -523,7 +567,25 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 ),
                               ),
                             ],
-                            if (missed || appointmentStatus == 'done') ...[
+                            const SizedBox(height: 15),
+
+                            if (appointmentStatus == 'missed')
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: const Text(
+                                  'Missed Appointment',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(255, 166, 25, 15),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            if (appointmentStatus == 'missed') ...[
                               const SizedBox(height: 10),
                               if (_hasRequestedNewAppointment) ...[
                                 const Center(
@@ -540,32 +602,31 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   ),
                                 )
                               ] else ...[
-                                // ElevatedButton.icon(
-                                //   onPressed: () {
-                                //     _showRequestForm(
-                                //         appointmentDetails, userFullName);
-                                //   },
-                                //   style: ElevatedButton.styleFrom(
-                                //     backgroundColor: const Color.fromARGB(255,
-                                //         12, 122, 17), // Active button color
-                                //     padding: const EdgeInsets.symmetric(
-                                //         horizontal: 10, vertical: 15),
-                                //     shape: RoundedRectangleBorder(
-                                //       borderRadius: BorderRadius.circular(10),
-                                //     ),
-                                //   ),
-                                //   icon: const Icon(Icons.refresh,
-                                //       color: Colors.white),
-                                //   label: Text(
-                                //     'Request Another Appointment',
-                                //     style: TextStyle(
-                                //       color: Colors.white,
-                                //       fontSize: screenWidth * 0.04,
-                                //       fontWeight: FontWeight.bold,
-                                //       fontStyle: FontStyle.italic,
-                                //     ),
-                                //   ),
-                                // ),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    _showRequestForm(
+                                        appointmentDetails, userFullName);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        const Color.fromARGB(255, 12, 122, 17),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.refresh,
+                                      color: Colors.white),
+                                  label: Text(
+                                    'Request Reschedule',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: screenWidth * 0.04,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                                 if (appointmentStatus == 'done') ...[
                                   const Center(
                                     child: Padding(
@@ -582,7 +643,38 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   _buildStarRating(), // Display the rating stars
                                 ],
                               ]
-                            ]
+                            ],
+                            if (appointmentStatus == 'done') ...[
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Maraming salamat sa inyong pagtangkilik.',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12.0),
+                                child: Text(
+                                  'Paki-rate ang inyong karanasan sa konsultasyong ito:',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              _buildStarRating(),
+                            ],
+                            const SizedBox(height: 30),
+                            qrCodeUrl != null
+                                ? Image.network(qrCodeUrl)
+                                : const Center(
+                                    child: Text('No QR code available.')),
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
@@ -602,13 +694,16 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(5, (index) {
         return IconButton(
+          iconSize: 40.0, // larger size
           icon: Icon(
             Icons.star,
-            color: index < _selectedRating ? Colors.yellow : Colors.grey,
+            color:
+                index < _selectedRating ? Colors.yellow[700] : Colors.grey[400],
           ),
           onPressed: _selectedRating == 0
               ? () => _submitRating(index + 1)
-              : null, // Disable changes if already rated
+              : null, // Disable if already rated
+          tooltip: _selectedRating == 0 ? 'I-rate ito' : 'Na-rate na',
         );
       }),
     );
@@ -652,7 +747,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Humiling ng Appointment',
+                        'Humiling ng Muling Pag-iskedyul',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -660,7 +755,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                         ),
                       ),
                       const Text(
-                        '(Request a Follow-up Appointment)',
+                        '(Request to Reschedule)',
                         style: TextStyle(
                           fontSize: 14,
                           fontStyle: FontStyle.italic,
@@ -670,7 +765,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        "Ang form na ito ay inilaan para humiling ng pangalawa o kasunod na appointment na may kaugnayan sa iyong naunang konsultasyon. Maaari kang humingi ng karagdagang tulong o ipagpatuloy ang talakayan hinggil sa parehong legal na usapin. Pakilagay ang dahilan ng iyong follow-up request.",
+                        "Ang form na ito ay para humiling ng bagong iskedyul para sa konsultasyon na hindi mo nadaluhan. Pakilagay ang dahilan kung bakit hindi ka naka-attend at ipahayag ang iyong kahilingan para sa muling pagtakda ng appointment.",
                         style: TextStyle(
                           color: Colors.black87,
                           fontSize: 14,
@@ -679,20 +774,30 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        '(This form is intended to request a second or follow-up appointment related to your previous consultation. You can seek additional assistance or continue discussing the same legal matter. Please provide a reason for your follow-up request.)',
+                        "(This form is to request a new schedule for the consultation you missed. Please explain why you were unable to attend and state your request for a rescheduled appointment.)",
                         style: TextStyle(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                           color: Color.fromARGB(221, 42, 42, 42),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 20),
                       TextFormField(
                         initialValue: _reason,
                         decoration: InputDecoration(
+                          labelText: 'Dahilan ng Hindi Pagdalo...',
+                          hintText:
+                              'Halimbawa: Nagkasakit, may biglaang responsibilidad, etc.',
+                          alignLabelWithHint: true,
                           labelStyle: const TextStyle(
-                            color: Colors.black87,
                             fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54,
+                          ),
+                          hintStyle: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
                           ),
                           filled: true,
                           fillColor: Colors.grey[100],
@@ -716,7 +821,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                         style: const TextStyle(fontSize: 14),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Pakilagay ang dahilan ng follow-up appointment.';
+                            return 'Pakilagay ang dahilan ng hindi pagdalo.';
                           }
                           return null;
                         },
@@ -746,7 +851,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                         icon: const Icon(Icons.attach_file,
                             color: Colors.blueAccent),
                         label: const Text(
-                          'Attach File (Optional)',
+                          'Attach Supporting File (Optional)',
                           style: TextStyle(
                             color: Colors.blueAccent,
                             fontSize: 14,
@@ -792,7 +897,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                             minimumSize: const Size(double.infinity, 50),
                           ),
                           child: const Text(
-                            'Submit Request',
+                            'Submit Reschedule Request',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -817,155 +922,63 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       Map<String, dynamic> appointmentDetails) async {
     final uid = appointmentDetails['appointmentDetails']['uid'];
 
-    // Get full name from users collection using UID
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final userData = userDoc.data();
-    final fullName = userData != null
-        ? '${userData['display_name'] ?? ''} ${userData['middle_name'] ?? ''} ${userData['last_name'] ?? ''}'
-            .trim()
-        : 'Unknown User';
-
     if (_isSubmitting) return;
 
     setState(() {
       _isSubmitting = true;
     });
 
-    String newControlNumber = generateControlNumber();
     String? fileUrl;
 
     try {
-      // Fetch latest login activity
-      final loginSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('loginActivity')
-          .orderBy('loginTime', descending: true)
-          .limit(1)
-          .get();
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final userData = userDoc.data();
+      final fullName = userData != null
+          ? '${userData['display_name'] ?? ''} ${userData['middle_name'] ?? ''} ${userData['last_name'] ?? ''}'
+              .trim()
+          : 'Unknown User';
 
-      String ipAddress = 'Unknown';
-      String userAgent = 'Unknown';
-
-      if (loginSnapshot.docs.isNotEmpty) {
-        final loginData = loginSnapshot.docs.first.data();
-        ipAddress = loginData['ipAddress'] ?? 'Unknown';
-        userAgent = loginData['deviceName'] ?? 'Unknown';
-      }
-
-      // Upload file if selected
       if (_selectedFile != null) {
         fileUrl = await _uploadFileToStorage(
-            _selectedFile!, newControlNumber, fullName);
+            _selectedFile!, widget.controlNumber, fullName);
         if (fileUrl == null) throw Exception('Failed to upload file.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('File uploaded successfully.')),
-        );
       }
 
-      // Update current appointment to mark as new request
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(widget.controlNumber)
           .update({
-        'appointmentDetails.newRequest': true,
-        'appointmentDetails.newControlNumber': newControlNumber,
-        'appointmentDetails.requestReason': _reason,
+        'appointmentDetails.appointmentStatus': 'pending_reschedule',
+        'appointmentDetails.rescheduleRequestReason': _reason,
         'uploadedImages.newRequestUrl': fileUrl ?? '',
+        'appointmentDetails.updatedTime': FieldValue.serverTimestamp(),
       });
 
-      // Generate QR code
-      final qrCodeImageUrl = await _generateQrCodeImageUrl(newControlNumber);
-
-      // Create new appointment
-      await FirebaseFirestore.instance
-          .collection('appointments')
-          .doc(newControlNumber)
-          .set({
-        'read': false,
-        'rating': null,
-        'appointmentDetails': {
-          'uid': uid,
-          'appointmentStatus': 'pending',
-          'controlNumber': newControlNumber,
-          'newRequest': false,
-          'requestReason': _reason,
-          'appointmentDate': null,
-          'apptType': null,
-          'createdDate': FieldValue.serverTimestamp(),
-          'updatedTime': FieldValue.serverTimestamp(),
-          'qrCode': qrCodeImageUrl,
-          'apptRating': null,
-          'refuseReason': null,
-        },
-        'legalAssistanceRequested': Map<String, dynamic>.from(
-            appointmentDetails['legalAssistanceRequested']),
-        'uploadedImages': {
-          'newRequestUrl': fileUrl ?? '',
-          'proceedingFileUrl': '',
-        },
-        'rescheduleHistory': {
-          'rescheduleAppointmentType': null,
-          'rescheduleDate': null,
-          'rescheduleReason': null,
-          'rescheduleTimestamp': null,
-        },
-      });
-
-      // Audit logs
-      await FirebaseFirestore.instance.collection('audit_logs').add({
-        'actionType': 'CREATE',
-        'timestamp': FieldValue.serverTimestamp(),
-        'uid': uid,
-        'changes': {
-          'appointmentDetails.controlNumber': {
-            'oldValue': null,
-            'newValue': newControlNumber,
-          },
-          'appointmentDetails.appointmentStatus': {
-            'oldValue': null,
-            'newValue': 'pending',
-          },
-          'appointmentDetails.qrCode': {
-            'oldValue': null,
-            'newValue': qrCodeImageUrl,
-          },
-        },
-        'affectedData': {
-          'targetUserId': uid,
-          'targetUserName': fullName,
-        },
-        'metadata': {'ipAddress': ipAddress, 'userAgent': userAgent},
-      });
-
-      // Send notifications
       await _sendNotification(
         uid: uid,
         message:
-            'Your appointment request with Ticket Number $newControlNumber has been submitted successfully.',
+            'Your reschedule request for appointment (ID:${widget.controlNumber}) has been submitted.',
         type: 'appointment',
-        controlNumber: newControlNumber,
+        controlNumber: widget.controlNumber,
       );
 
-      // Notify all head lawyers
-      final headLawyersSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('member_type', isEqualTo: 'head')
-          .get();
+      // Notify the assigned lawyer
+      final assignedLawyerId =
+          appointmentDetails['appointmentDetails']['assignedLawyer'];
 
-      for (final doc in headLawyersSnapshot.docs) {
+      if (assignedLawyerId != null && assignedLawyerId.toString().isNotEmpty) {
         await _sendNotification(
-          uid: doc.id,
-          message: 'A new appointment request has been submitted by $fullName.',
+          uid: assignedLawyerId,
+          message:
+              '$fullName has submitted a reschedule request for appointment (ID:${widget.controlNumber}).',
           type: 'appointment',
-          controlNumber: newControlNumber,
+          controlNumber: widget.controlNumber,
         );
       }
 
       setState(() {
         _hasRequestedNewAppointment = true;
-        _lastSubmittedAppointmentControlNumber = newControlNumber;
         _isSubmitting = false;
       });
 

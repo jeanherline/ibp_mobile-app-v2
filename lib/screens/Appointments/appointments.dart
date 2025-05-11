@@ -61,6 +61,31 @@ class _AppointmentsListState extends State<AppointmentsList> {
     super.initState();
   }
 
+  Icon getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Icon(Icons.schedule, color: Colors.amber[800], size: 28);
+      case 'approved':
+        return Icon(Icons.verified, color: Colors.blue[800], size: 28);
+      case 'accepted':
+        return Icon(Icons.how_to_reg, color: Colors.teal[700], size: 28);
+      case 'scheduled':
+        return const Icon(Icons.event_available,
+            color: Color(0xFF580049), size: 28);
+      case 'missed':
+        return Icon(Icons.warning_amber, color: Colors.red[800], size: 28);
+      case 'refused':
+      case 'denied':
+        return const Icon(Icons.remove_circle,
+            color: Colors.redAccent, size: 28);
+      case 'done':
+        return Icon(Icons.check_circle, color: Colors.green[700], size: 28);
+      default:
+        return const Icon(Icons.calendar_today,
+            color: Color(0xFF580049), size: 28);
+    }
+  }
+
   Stream<List<Map<String, dynamic>>> fetchAppointments() async* {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -120,7 +145,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
               final appointmentStatus = capitalizeFirstLetter(
                   appointment['appointmentDetails']['appointmentStatus']);
               final appointmentType =
-                  appointment['appointmentDetails']['apptType'] ?? 'N/A';
+                  appointment['appointmentDetails']['scheduleType'] ?? 'N/A';
               final appointmentDate =
                   appointment['appointmentDetails']['appointmentDate'] != null
                       ? (appointment['appointmentDetails']['appointmentDate']
@@ -180,24 +205,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
                       // Conditionally show checkmark or calendar icon based on appointment status
                       Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: Icon(
-                          appointmentStatus.toLowerCase() == 'done'
-                              ? Icons.check_circle // Green check for done
-                              : isMissedAppointment()
-                                  ? Icons
-                                      .cancel // Red cross for missed appointments
-                                  : Icons
-                                      .calendar_today, // Default calendar icon for other statuses
-                          color: appointmentStatus.toLowerCase() == 'done'
-                              ? const Color.fromARGB(
-                                  255, 48, 133, 51) // Green color for done
-                              : isMissedAppointment()
-                                  ? const Color.fromARGB(255, 166, 25,
-                                      15) // Red color for missed appointments
-                                  : const Color(
-                                      0xFF580049), // Purple for other statuses
-                          size: 28, // Icon size
-                        ),
+                        child: getStatusIcon(appointmentStatus),
                       ),
                       Expanded(
                         child: Column(
@@ -212,6 +220,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
                               ),
                             ),
                             const SizedBox(height: 8),
+
                             // Status and appointment type block with background color
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -221,44 +230,50 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
-                                capitalizeFirstLetter(
-                                  appointmentType != null &&
-                                          appointmentType.isNotEmpty &&
-                                          appointmentType != 'N/A'
-                                      ? '$appointmentStatus - $appointmentType'
-                                      : appointmentStatus,
-                                ),
+                                appointmentStatus.toLowerCase() ==
+                                        'pending_reschedule'
+                                    ? 'Awaiting for Reschedule Approval'
+                                    : capitalizeFirstLetter(
+                                        appointmentType.isNotEmpty &&
+                                                appointmentType != 'N/A'
+                                            ? '$appointmentStatus - $appointmentType'
+                                            : appointmentStatus,
+                                      ),
                                 style: const TextStyle(
-                                  color: Colors.white, // White text
+                                  color: Colors.white,
                                   fontSize: 14,
                                 ),
                               ),
                             ),
+
                             const SizedBox(height: 8),
-                            // Scheduled or Missed date
-                            if (appointmentDate != null)
+
+                            // Appointment Date or Reschedule Date
+                            if (appointmentStatus.toLowerCase() !=
+                                    'pending_reschedule' &&
+                                appointmentDate != null)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      if (isMissedAppointment())
+                                      if (appointmentStatus.toLowerCase() ==
+                                          'missed')
                                         const Text(
                                           'Missed: ',
                                           style: TextStyle(
                                             fontSize: 14,
-                                            color: Color.fromARGB(255, 166, 25,
-                                                15), // Red color for missed
+                                            color: Color.fromARGB(
+                                                255, 166, 25, 15),
                                             fontWeight: FontWeight.bold,
                                           ),
                                         )
                                       else
                                         const Text(
-                                          'Scheduled: ', // Scheduled prefix
+                                          'Appt. Schedule: ',
                                           style: TextStyle(
                                             fontSize: 14,
-                                            color: Colors
-                                                .black, // Black color for scheduled appointments
+                                            color: Colors.black,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -268,13 +283,11 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                             .format(appointmentDate),
                                         style: const TextStyle(
                                           fontSize: 14,
-                                          color: Colors
-                                              .black, // Date remains black
+                                          color: Colors.black,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  // Add the new request message if applicable
                                   if (newRequest)
                                     const Padding(
                                       padding: EdgeInsets.only(top: 5),
@@ -282,12 +295,44 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                         'You have requested a new appt. for this',
                                         style: TextStyle(
                                           fontStyle: FontStyle.italic,
-                                          color:
-                                              Colors.black, // Grey italic text
+                                          color: Colors.black,
                                         ),
                                       ),
                                     ),
                                 ],
+                              )
+                            else if (appointment['rescheduleHistory'] != null &&
+                                appointment['rescheduleHistory'] is List &&
+                                (appointment['rescheduleHistory'] as List)
+                                    .isNotEmpty &&
+                                (appointment['rescheduleHistory'].last as Map<
+                                        String, dynamic>)['rescheduleDate'] !=
+                                    null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: const TextStyle(
+                                        fontSize: 14, color: Colors.black87),
+                                    children: [
+                                      const TextSpan(
+                                        text: 'Request: ',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      TextSpan(
+                                        text: DateFormat(
+                                                'MMMM dd, yyyy \'at\' hh:mm a')
+                                            .format(
+                                          (appointment['rescheduleHistory']
+                                                      .last['rescheduleDate']
+                                                  as Timestamp)
+                                              .toDate(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             const SizedBox(height: 4),
                             // Created date
@@ -295,8 +340,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
                               'Created: ${DateFormat('MMMM dd, yyyy \'at\' hh:mm a').format(createdDate)}',
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Colors
-                                    .grey, // Gray color for less prominence
+                                color: Colors.grey,
                               ),
                             ),
                           ],

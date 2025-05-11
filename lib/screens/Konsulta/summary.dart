@@ -263,14 +263,24 @@ class _SummaryScreenState extends State<SummaryScreen> {
                     _buildGridItem(
                         'Uri ng Tulong Legal', formState.selectedAssistanceType,
                         translation: 'Type of Legal Assistance'),
-                    _buildGridItem('Problema', formState.problems,
-                        translation: 'Problem/s'),
                     _buildGridItem(
-                        'Dahilan ng Problema', formState.problemReason,
-                        translation: 'Reason for the Problem'),
+                      'Problema',
+                      formState.problems,
+                      isMultiline: true,
+                      translation: 'Problem/s',
+                    ),
                     _buildGridItem(
-                        'Mga Solusyong Ninanais', formState.desiredSolutions,
-                        translation: 'Desired Solution/s'),
+                      'Dahilan ng Problema',
+                      formState.problemReason,
+                      isMultiline: true,
+                      translation: 'Reason for the Problem',
+                    ),
+                    _buildGridItem(
+                      'Mga Solusyong Ninanais',
+                      formState.desiredSolutions,
+                      isMultiline: true,
+                      translation: 'Desired Solution/s',
+                    ),
                     _buildImageRow(
                       'Barangay Certificate (Barangay Certificate of Indigency)',
                       uploadedImages['barangayImageUrl'],

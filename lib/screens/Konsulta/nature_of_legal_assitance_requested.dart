@@ -22,21 +22,27 @@ class _NatureOfLegalAssistanceRequestedState
       TextEditingController();
   final TextEditingController _desiredSolutionsController =
       TextEditingController();
+  final TextEditingController _otherAssistanceController =
+      TextEditingController();
 
   final List<String> assistanceOptions = [
     'Payong Legal (Legal Advice)',
     'Legal na Representasyon (Legal Representation)',
-    'Pag gawa ng Legal na Dokumento (Drafting of Legal Document)'
+    'Pag gawa ng Legal na Dokumento (Drafting of Legal Document)',
+    'Iba pa (Others)',
   ];
 
   @override
   void initState() {
     super.initState();
     final formState = context.read<FormStateProvider>();
-    _selectedAssistanceType = formState.selectedAssistanceType.isNotEmpty &&
-            assistanceOptions.contains(formState.selectedAssistanceType)
-        ? formState.selectedAssistanceType
-        : null;
+    if (assistanceOptions.contains(formState.selectedAssistanceType)) {
+      _selectedAssistanceType = formState.selectedAssistanceType;
+    } else if (formState.selectedAssistanceType.isNotEmpty) {
+      _selectedAssistanceType = 'Iba pa (Others)';
+      _otherAssistanceController.text = formState.selectedAssistanceType;
+    }
+
     _problemsController.text = formState.problems;
     _problemReasonController.text = formState.problemReason;
     _desiredSolutionsController.text = formState.desiredSolutions;
@@ -108,10 +114,25 @@ class _NatureOfLegalAssistanceRequestedState
                     (value) {
                       setState(() {
                         _selectedAssistanceType = value;
+                        if (value != 'Iba pa (Others)') {
+                          _otherAssistanceController.clear();
+                        }
                       });
                     },
                     screenWidth,
                   ),
+                  if (_selectedAssistanceType == 'Iba pa (Others)')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: _buildTextField(
+                        'Iba pang klase ng tulong legal',
+                        'Other type of legal assistance',
+                        _otherAssistanceController,
+                        'Ilagay ang klase ng tulong legal',
+                        true,
+                        screenWidth,
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   _buildTextAreaField(
                     'Ano ang iyong problema?',
@@ -155,7 +176,9 @@ class _NatureOfLegalAssistanceRequestedState
                           final formState = context.read<FormStateProvider>();
                           formState.updateNatureOfLegalAssistanceRequested(
                             selectedAssistanceType:
-                                _selectedAssistanceType ?? '',
+                                _selectedAssistanceType == 'Iba pa (Others)'
+                                    ? _otherAssistanceController.text
+                                    : _selectedAssistanceType ?? '',
                             problems: _problemsController.text,
                             problemReason: _problemReasonController.text,
                             desiredSolutions: _desiredSolutionsController.text,
@@ -282,6 +305,68 @@ class _NatureOfLegalAssistanceRequestedState
               ),
             );
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(
+    String label,
+    String subLabel,
+    TextEditingController controller,
+    String hintText,
+    bool isRequired,
+    double screenWidth,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: TextSpan(
+            text: '$label ',
+            style:
+                TextStyle(color: Colors.black, fontSize: screenWidth * 0.045),
+            children: [
+              TextSpan(
+                text: '($subLabel)',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: screenWidth * 0.04,
+                ),
+              ),
+              if (isRequired)
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: Colors.red),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+          ),
+          validator: isRequired
+              ? (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'This field cannot be empty';
+                  }
+                  return null;
+                }
+              : null,
         ),
       ],
     );

@@ -54,29 +54,64 @@ class _HomeState extends State<Home> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Disclaimer'),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(
-                  'Thank you for using our app, Integrated Bar of the Philippines Electronic Legal Services and Access Malolos Chapter (IBP - ELSA Malolos), which serves as an Via App appointment booking system for IBP Malolos. Additionally, our app offers web viewing of Jur.ph, an AI-Powered Legal Research Platform in the Philippines. By incorporating Jur.ph into our app, we aim to provide a valuable public service that significantly benefits our users by granting access to essential legal information and resources.\n\n'
-                  'Our app, IBP - ELSA Malolos, is independent of Jur.ph. Jur.ph retains sole ownership of their content, and our app maintains a separate identity. By including their website, we aim to offer essential legal information and resources as a public service.\n\n'
-                  'By incorporating Jur.ph into our app, we aim to:\n\n'
-                  'Offer a valuable public service that will significantly benefit our users by providing them with access to essential legal information and resources, including curated laws and jurisprudence in the Philippines.\n\n',
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Jurisprudence.ph: AI-Powered Legal Research Platform',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
-              ],
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Disclosure and Limitation of Liability',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Thank you for using our application, the Philippine Electronic Legal Services and Access - Malolos Chapter (PH-ELSA Malolos), which allows users to book legal consultations via our appointment system. As part of our services, we also provide access to Jur.ph, an AI-powered legal research platform in the Philippines.\n\n'
+              'Please be informed of the following disclosure and limitation of liability:\n\n'
+              '• Jur.ph is an independent platform not owned, operated, or maintained by PH-ELSA Malolos or the Integrated Bar of the Philippines. We do not modify, verify, or control the content published on Jur.ph.\n\n'
+              '• All legal materials, case texts, and information accessed through Jur.ph are provided solely by Jur.ph. They retain full ownership and responsibility for the accuracy and integrity of their content.\n\n'
+              '• The integration of Jur.ph into our app is purely for informational purposes—to offer users convenient access to legal resources. This does not constitute an endorsement, legal advice, or official representation.\n\n'
+              '• Users are strongly advised to consult with a licensed legal professional for legal guidance specific to their situation. Reliance on the information from Jur.ph is at your own discretion and risk.\n\n'
+              '• PH-ELSA Malolos and its developers disclaim any liability for loss, damages, or legal consequences arising from the use of Jur.ph or the interpretation of its content.\n\n'
+              'By continuing, you acknowledge that you have read and understood this disclaimer and agree to proceed at your own discretion.',
+              style: TextStyle(fontSize: 14, height: 1.5),
             ),
           ),
-          actions: <Widget>[
+          actions: [
             TextButton(
-              child: const Text('I Understand'),
-              onPressed: () {
-                Navigator.pop(context); // Close the modal
+              child: const Text(
+                'I Understand',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onPressed: () async {
+                User? user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .update({'jurDisclaimerAccepted': true});
+                }
+
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const LawsJurisprudence(),
-                  ),
+                      builder: (context) => const LawsJurisprudence()),
                 );
               },
             ),
@@ -279,22 +314,34 @@ class _HomeState extends State<Home> {
                       controller: _pageController,
                       children: [
                         _buildPageItem(
-                          title: '|  Mag-book ng appointment:',
+                          title: '|  Mag-request ng Legal Consultation',
                           description:
-                              'Mag-book ng inyong mga appointment Via App gamit ang aming bagong scheduling module! Pinadadali nito ang proseso sa pamamagitan ng pagbibigay ng malinaw na impormasyon tungkol sa mga kinakailangan.',
+                              'Mag-request ng legal consultation at hintayin ang abiso mula sa IBP Malolos. Sila ang magbibigay ng iskedyul, maaaring walk-in o online, depende sa availability at assessment. Real-time updates? Diretso sa app mo!',
                           color: const Color(0xFF221F1F),
                         ),
                         _buildPageItem(
-                          title: '|  Implementasyon ng QR Code System: ',
+                          title: '|  QR Code para sa Walk-in Process',
                           description:
-                              'Gamitin ang aming QR code system para sa verification ng inyong appointment! Pinapalaganap nito ang digitization at binabawasan ang abala sa pre-review ng mga kinakailangan ng legal aid lawyers.',
+                              'May kumpirmadong appointment? Dalhin at ipakita ang iyong QR code sa front desk sa mismong araw ng konsultasyon. Gamit ito para sa mas mabilis na verification, iwas pila, at mas maayos na daloy ng serbisyo!',
                           color: const Color(0xFFB73CA8),
                         ),
                         _buildPageItem(
-                          title: '|  Palawakin ang kaalaman:',
+                          title: '|  Upload at Update ng Dokumento',
                           description:
-                              'Gamitin ang Jur.ph sa aming IBP ELSA app! Makakakuha kayo ng access sa mahahalagang legal na impormasyon at resources. Kasama na rito ang case digests, summaries, jurisprudence, at mga batas.',
-                          color: const Color.fromARGB(255, 201, 175, 6),
+                              'I-upload ang mga kinakailangang dokumento gaya ng Certificate of Indigency mula sa Barangay o DSWD, at PAO Disqualification Letter direkta sa app. Siguraduhing mag-reupload kada 6 na buwan para mapanatiling valid at updated ang inyong requirements.',
+                          color: Color(0xFF6A5ACD),
+                        ),
+                        _buildPageItem(
+                          title: '|  Mabilisang Sagot gamit si Elsa at Jur.ph',
+                          description:
+                              'May legal na tanong? Gamitin si Elsa, ang aming AI Legal Assistant, para sa mabilisang sagot. Pwede ka ring mag-explore ng mga case digests, batas, at jurisprudence gamit ang Jur.ph viewer. Lahat ito, nasa loob ng app!',
+                          color: Color(0xFF8B2E2E),
+                        ),
+                        _buildPageItem(
+                          title: '|  Serbisyong Legal para sa Lahat',
+                          description:
+                              'Walang bayad. Walang komplikado. Sa PH-ELSA app, libre at madaling makuha ang serbisyong legal para sa bawat Pilipino. Lalo na sa mga higit na nangangailangan ng tulong!',
+                          color: Color(0xFF3F51B5),
                         ),
                       ],
                     ),
@@ -303,7 +350,7 @@ class _HomeState extends State<Home> {
                   Center(
                     child: SmoothPageIndicator(
                       controller: _pageController,
-                      count: 3,
+                      count: 5,
                       effect: const ExpandingDotsEffect(
                         expansionFactor: 3,
                         spacing: 8,
@@ -453,8 +500,30 @@ class _HomeState extends State<Home> {
                             _buildIconOption(
                               icon: FontAwesomeIcons.landmark,
                               label: 'Batas',
-                              onTap: () {
-                                _showDisclaimerModal(context);
+                              onTap: () async {
+                                User? user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
+                                  final userDoc = await FirebaseFirestore
+                                      .instance
+                                      .collection('users')
+                                      .doc(user.uid)
+                                      .get();
+
+                                  final hasAccepted = userDoc
+                                          .data()?['jurDisclaimerAccepted'] ??
+                                      false;
+
+                                  if (hasAccepted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const LawsJurisprudence()),
+                                    );
+                                  } else {
+                                    _showDisclaimerModal(context);
+                                  }
+                                }
                               },
                             ),
                             _buildIconOption(
