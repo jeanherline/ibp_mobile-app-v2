@@ -1,5 +1,6 @@
-import 'dart:math';
+import 'dart:async';
 
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,12 +29,31 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isPhoneVerificationInProgress =
       false; // To track the phone verification progress
   String? _phoneNumber; // To store the user's phone number
+  bool _is2FALoading = false;
 
   @override
   void initState() {
     super.initState();
     _checkGoogleLink();
     _checkTwoFactorStatus();
+    _loadUserPhoneNumber(); // ✅ Add this line
+  }
+
+  Future<void> _loadUserPhoneNumber() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final phone = userDoc['phone'];
+      if (phone != null && phone.toString().isNotEmpty) {
+        setState(() {
+          _phoneNumber = phone;
+        });
+      }
+    }
   }
 
   bool _checkIfGoogleLinked(User user) {
@@ -99,47 +119,187 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showOtpInputModal(BuildContext context) {
-    TextEditingController otpController = TextEditingController();
+    final TextEditingController otpController = TextEditingController();
+    bool isVerifying = false;
+    bool isTrusted = false;
+    int countdown = 120;
+    Timer? timer;
+
+    void startCountdown(Function setModalState) {
+      timer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (countdown > 0) {
+          setModalState(() => countdown--);
+        } else {
+          t.cancel();
+        }
+      });
+    }
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Enter OTP'),
-          content: TextField(
-            controller: otpController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'OTP',
-              hintText: '123456',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final otp = otpController.text.trim();
-                if (otp.isNotEmpty) {
-                  final PhoneAuthCredential credential =
-                      PhoneAuthProvider.credential(
-                    verificationId: _verificationId,
-                    smsCode: otp,
-                  );
-                  await _signInWithPhoneAuthCredential(credential);
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('Submit'),
-            ),
-          ],
+        final screenWidth = MediaQuery.of(context).size.width;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_outline, color: Color(0xFF580049)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Two-Factor Authentication',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF580049),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: screenWidth * 0.85,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Enter the 6-digit code sent to your registered mobile number to complete verification.',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      decoration: InputDecoration(
+                        hintText: '123456',
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF580049), width: 2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isTrusted,
+                          onChanged: (val) {
+                            setModalState(() => isTrusted = val ?? false);
+                          },
+                        ),
+                        const Expanded(child: Text('Trust this device')),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      countdown > 0
+                          ? 'Resend code in 0:${countdown.toString().padLeft(2, '0')}'
+                          : 'Didn’t get the code?',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    if (countdown == 0)
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _verifyPhoneNumber(_phoneNumber!);
+                        },
+                        child: const Text('Resend Code'),
+                      ),
+                    if (isVerifying) const SizedBox(height: 16),
+                    if (isVerifying)
+                      const CircularProgressIndicator(strokeWidth: 2),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.only(right: 16, bottom: 10),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    timer?.cancel();
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Verification cancelled.')),
+                    );
+                  },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: isVerifying
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.verified_user_outlined,
+                          size: 18, color: Colors.white),
+                  label: const Text(
+                    'Verify',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF580049),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: isVerifying
+                      ? null
+                      : () async {
+                          final otp = otpController.text.trim();
+                          if (otp.isNotEmpty) {
+                            setModalState(() => isVerifying = true);
+                            final credential = PhoneAuthProvider.credential(
+                              verificationId: _verificationId,
+                              smsCode: otp,
+                            );
+                            await _signInWithPhoneAuthCredential(credential);
+                            timer?.cancel();
+                            Navigator.of(context).pop();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Please enter the OTP code.')),
+                            );
+                          }
+                        },
+                ),
+              ],
+            );
+          },
         );
       },
-    );
+    ).then((_) => timer?.cancel());
+
+    startCountdown((fn) => {});
   }
 
   Future<void> _signInWithPhoneAuthCredential(
@@ -173,13 +333,23 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  String _formatPhoneNumber(String rawPhone) {
+    rawPhone = rawPhone.trim();
+    if (rawPhone.startsWith('+')) return rawPhone;
+    if (rawPhone.startsWith('0')) return '+63${rawPhone.substring(1)}';
+    if (rawPhone.startsWith('9')) return '+63$rawPhone';
+    return rawPhone; // fallback
+  }
+
   Future<void> _verifyPhoneNumber(String phoneNumber) async {
     setState(() {
       _isPhoneVerificationInProgress = true;
     });
 
+    final formattedPhone = _formatPhoneNumber(phoneNumber);
+
     await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
+      phoneNumber: formattedPhone,
       timeout: const Duration(seconds: 60),
       verificationCompleted: (PhoneAuthCredential credential) async {
         // Automatically verify if possible
@@ -209,7 +379,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showPhoneNumberModal(BuildContext context) {
-    TextEditingController phoneNumberController = TextEditingController();
+    TextEditingController phoneNumberController =
+        TextEditingController(text: _phoneNumber ?? '');
 
     showDialog(
       context: context,
@@ -257,29 +428,43 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _toggleTwoFactorAuth(bool value) async {
     User? user = FirebaseAuth.instance.currentUser;
-
     if (user != null) {
-      if (value) {
-        // If enabling 2FA, check if the phone number exists
-        if (_phoneNumber == null || _phoneNumber!.isEmpty) {
-          _showPhoneNumberModal(context); // Show modal to add phone number
-        } else {
-          // Phone number exists, initiate phone number verification
-          await _verifyPhoneNumber(_phoneNumber!);
-        }
-      } else {
-        // Disabling 2FA, just update Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({'isTwoFactorEnabled': false});
-        setState(() {
-          _isTwoFactorEnabled = false;
-        });
+      setState(() {
+        _is2FALoading = true;
+      });
 
+      try {
+        if (value) {
+          // If enabling 2FA and phone number is missing, prompt first
+          if (_phoneNumber == null || _phoneNumber!.isEmpty) {
+            _showPhoneNumberModal(context);
+          } else {
+            // Phone number exists, initiate verification
+            await _verifyPhoneNumber(_phoneNumber!);
+          }
+        } else {
+          // Disabling 2FA
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'isTwoFactorEnabled': false});
+
+          setState(() {
+            _isTwoFactorEnabled = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Two-Factor Authentication disabled')),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Two-Factor Authentication disabled')),
+          SnackBar(content: Text('2FA toggle failed: $e')),
         );
+      } finally {
+        setState(() {
+          _is2FALoading = false;
+        });
       }
     }
   }
@@ -531,12 +716,18 @@ class _SettingsPageState extends State<SettingsPage> {
           SettingTile(
             title: 'Two-Factor Authentication (2FA)',
             icon: Icons.security,
-            trailing: Switch(
-              value: _isTwoFactorEnabled,
-              onChanged: (bool value) {
-                _toggleTwoFactorAuth(value);
-              },
-            ),
+            trailing: _is2FALoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Switch(
+                    value: _isTwoFactorEnabled,
+                    onChanged: (bool value) {
+                      _toggleTwoFactorAuth(value);
+                    },
+                  ),
           ),
           SettingTile(
             title: 'Login Activity',

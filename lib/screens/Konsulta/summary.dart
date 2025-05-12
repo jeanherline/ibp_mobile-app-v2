@@ -385,13 +385,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
                             // Save to Firestore
                             await docRef.set({
+                              'uid': user.uid,
                               'appointmentDetails': {
-                                'uid': user.uid,
                                 'appointmentStatus': 'pending',
                                 'controlNumber': controlNumber,
-                                'createdDate': FieldValue.serverTimestamp(),
-                                'updatedTime': FieldValue.serverTimestamp(),
-                                'read': 'false',
                                 'qrCode': qrCodeUrl,
                                 'apptType': 'Via App',
                               },
@@ -402,6 +399,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                 'problemReason': formState.problemReason,
                                 'desiredSolutions': formState.desiredSolutions,
                               },
+                              'createdDate': FieldValue.serverTimestamp(),
+                              'updatedTime': FieldValue.serverTimestamp(),
+                              'read': 'false',
                             });
 
                             // Audit log
@@ -453,7 +453,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                               await _sendNotification(
                                 uid: doc.id,
                                 message:
-                                    'A new appointment request has been submitted by ${formState.fullName} with Ticket Number $controlNumber and is awaiting your approval.',
+                                    'A new appointment request has been submitted with (ID:$controlNumber) and is awaiting your approval.',
                                 type: 'appointment',
                                 controlNumber: controlNumber,
                               );

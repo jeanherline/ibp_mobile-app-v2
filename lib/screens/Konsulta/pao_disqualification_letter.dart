@@ -478,6 +478,9 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
 
       // Save form data to the appointments collection in Firestore
       await userDoc.set({
+        'createdDate': FieldValue.serverTimestamp(),
+        'updatedTime': FieldValue.serverTimestamp(),
+        'read': 'false',
         'applicantProfile': {
           'uid': user.uid,
           'address': formStateProvider.address,
@@ -494,9 +497,6 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
           'appointmentStatus': 'pending',
           'controlNumber': controlNumber,
           'apptType': 'Via App',
-          'createdDate': FieldValue.serverTimestamp(),
-          'updatedTime': FieldValue.serverTimestamp(),
-          'read': 'false',
           'qrCode': qrCodeImageUrl,
         },
         'legalAssistanceRequested': {
@@ -578,7 +578,7 @@ class _PAODisqualificationLetterState extends State<PAODisqualificationLetter> {
         await _sendNotification(
           uid: doc.id,
           message:
-              'A new appointment request has been submitted by ${formStateProvider.fullName} with Ticket Number $controlNumber and is awaiting your approval.',
+              'A new appointment request has been submitted with (ID:$controlNumber) and is awaiting your approval.',
           type: 'appointment',
           controlNumber: controlNumber,
         );

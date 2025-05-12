@@ -66,7 +66,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
       case 'pending':
         return Icon(Icons.schedule, color: Colors.amber[800], size: 28);
       case 'approved':
-        return Icon(Icons.verified, color: Colors.blue[800], size: 28);
+        return Icon(Icons.task_alt, color: Colors.green[700], size: 28);
       case 'accepted':
         return Icon(Icons.how_to_reg, color: Colors.teal[700], size: 28);
       case 'scheduled':
@@ -97,8 +97,8 @@ class _AppointmentsListState extends State<AppointmentsList> {
           FirebaseFirestore.instance.collection('appointments');
 
       final appointmentsSnapshot = appointmentsRef
-          .where('appointmentDetails.uid', isEqualTo: userId)
-          .orderBy('appointmentDetails.createdDate', descending: true)
+          .where('uid', isEqualTo: userId)
+          .orderBy('updatedTime', descending: true)
           .snapshots();
 
       await for (final snapshot in appointmentsSnapshot) {
@@ -139,11 +139,15 @@ class _AppointmentsListState extends State<AppointmentsList> {
               final appointment = appointments[index];
               final controlNumber =
                   appointment['appointmentDetails']['controlNumber'];
-              final createdDate = (appointment['appointmentDetails']
-                      ['createdDate'] as Timestamp)
-                  .toDate();
+              final createdDate =
+                  (appointment['createdDate'] as Timestamp).toDate();
+              final updatedTime = appointment['updatedTime'] != null
+                  ? (appointment['updatedTime'] as Timestamp).toDate()
+                  : null;
+              final rawStatus =
+                  appointment['appointmentDetails']['appointmentStatus'];
               final appointmentStatus = capitalizeFirstLetter(
-                  appointment['appointmentDetails']['appointmentStatus']);
+                  rawStatus == 'refused' ? 'approved' : rawStatus);
               final appointmentType =
                   appointment['appointmentDetails']['scheduleType'] ?? 'N/A';
               final appointmentDate =
@@ -219,8 +223,83 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                 fontSize: 16,
                               ),
                             ),
-                            const SizedBox(height: 8),
 
+                            if (appointment['legalAssistanceRequested']
+                                    ?['selectedAssistanceType'] !=
+                                null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  '${appointment['legalAssistanceRequested']['selectedAssistanceType']}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            if (appointment['appointmentDetails']
+                                        ['appointmentStatus'] ==
+                                    'denied' &&
+                                appointment['clientEligibility']
+                                        ?['denialReason'] !=
+                                    null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: const TextStyle(fontSize: 14),
+                                    children: [
+                                      TextSpan(
+                                        text: appointment['clientEligibility']
+                                            ['denialReason'],
+                                        style: const TextStyle(
+                                          color: Colors.redAccent,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            if (appointment['appointmentDetails']
+                                        ['appointmentStatus'] ==
+                                    'refused' &&
+                                appointment['refusalHistory']?['reason'] !=
+                                    null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Text(
+                                  appointment['refusalHistory']['reason'],
+                                  style: const TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+
+                            if (appointment['clientEligibility']?['notes'] !=
+                                null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: RichText(
+                                  textAlign: TextAlign.start,
+                                  text: TextSpan(
+                                    style: const TextStyle(
+                                        fontSize: 14, height: 1.5),
+                                    children: [
+                                      TextSpan(
+                                        text: appointment['clientEligibility']
+                                            ['notes'],
+                                        style: const TextStyle(
+                                          color: Colors.black87,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                             // Status and appointment type block with background color
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -236,7 +315,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                     : capitalizeFirstLetter(
                                         appointmentType.isNotEmpty &&
                                                 appointmentType != 'N/A'
-                                            ? '$appointmentStatus - $appointmentType'
+                                            ? '$appointmentStatus — $appointmentType'
                                             : appointmentStatus,
                                       ),
                                 style: const TextStyle(
@@ -343,6 +422,14 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                 color: Colors.grey,
                               ),
                             ),
+                            if (updatedTime != null)
+                              Text(
+                                'Last Updated: ${DateFormat('MMMM dd, yyyy \'at\' hh:mm a').format(updatedTime)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
                           ],
                         ),
                       ),

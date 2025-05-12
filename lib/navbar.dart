@@ -212,14 +212,14 @@ void _showLegalAiDisclaimerModal(BuildContext context) {
         ),
         content: const SingleChildScrollView(
           child: Text(
-            'The Elsa AI Legal Assistant is a feature of the Philippine Electronic Legal Services and Access (PH-ELSA) application under the Integrated Bar of the Philippines (IBP). It provides users with general legal information, including jurisprudence, statutes, and fundamental legal principles. This feature utilizes artificial intelligence to generate responses based on publicly available legal data and user input. Please note that the information provided by Elsa AI is for informational purposes only and should not be considered as legal advice.\n\n'
-            'By using this feature, you agree to the following terms:\n\n'
-            '• No Legal Advice or Attorney-Client Relationship: This AI Assistant does not offer legal advice and does not create an attorney-client relationship. The responses are informational and should not be relied upon as a substitute for professional legal consultation.\n\n'
-            '• Accuracy Not Guaranteed: While the AI aims to provide accurate and helpful information, it may not reflect the most recent legal developments or interpretations. Users are responsible for independently verifying all information.\n\n'
-            '• Limitation of Liability: The IBP, its developers, and affiliated parties are not liable for any inaccuracies, omissions, or consequences arising from use of the AI Assistant. Use of this feature is entirely at your own risk.\n\n'
-            '• User Responsibility: You are solely responsible for how you interpret and use the AI-generated content. Legal decisions should always be made with guidance from a licensed attorney.\n\n'
-            '• Supplementary Tool Only: This feature is intended as a support tool for legal research and reference. It is not a replacement for formal legal services, education, or official legal sources.\n\n'
-            'By continuing, you acknowledge that you have read, understood, and accepted this disclaimer and agree to hold harmless the IBP and all associated parties from any liability related to its use.',
+            'Ang Elsa AI Legal Assistant ay isang tampok ng Philippine Electronic Legal Services and Access (PH-ELSA) application sa ilalim ng Integrated Bar of the Philippines (IBP). Layunin nitong magbigay ng pangkalahatang impormasyon tungkol sa batas gaya ng jurisprudence, batas, at mahahalagang legal na prinsipyo. Gumagamit ito ng artificial intelligence upang bumuo ng mga sagot batay sa pampublikong legal na datos at input ng user. Paalala: ang mga impormasyong ibinibigay ng Elsa AI ay para lamang sa layuning pampagbibigay-kaalaman at hindi maituturing na legal na payo.\n\n'
+            'Sa paggamit ng tampok na ito, sumasang-ayon ka sa mga sumusunod na kondisyon:\n\n'
+            '• Walang Legal Advice o Attorney-Client Relationship: Ang AI Assistant na ito ay hindi nagbibigay ng legal na payo at hindi rin lumilikha ng attorney-client relationship. Ang mga sagot ay pawang impormasyon lamang at hindi dapat pagbatayan ng legal na desisyon nang walang propesyonal na konsultasyon.\n\n'
+            '• Walang Garantiyang Katumpakan: Bagama’t layunin ng AI na magbigay ng tama at kapaki-pakinabang na impormasyon, maaaring hindi nito masaklaw ang pinakabagong legal na pagbabago o interpretasyon. Responsibilidad ng user na kumpirmahin ang lahat ng impormasyon.\n\n'
+            '• Limitasyon ng Pananagutan: Ang IBP, mga developer, at mga kaugnay na partido ay hindi mananagot sa anumang pagkakamali, kakulangan, o epekto na dulot ng paggamit ng AI Assistant. Ginagamit mo ang tampok na ito nang may sariling pananagutan.\n\n'
+            '• Responsibilidad ng User: Ikaw lamang ang may pananagutan sa kung paano mo ginagamit at binibigyang-kahulugan ang nilalamang binuo ng AI. Ang mga legal na desisyon ay dapat gawin kasama ng isang lisensyadong abogado.\n\n'
+            '• Suportang Kasangkapan Lamang: Ang tampok na ito ay idinisenyo bilang karagdagang tulong para sa legal na pananaliksik at sanggunian. Hindi ito pamalit sa pormal na legal na serbisyo, edukasyon, o opisyal na legal na sanggunian.\n\n'
+            'Sa pagpapatuloy, kinikilala mong nabasa, naunawaan, at tinatanggap mo ang paalalang ito at sumasang-ayon kang hindi managot ang IBP at mga kaugnay na partido sa anumang isyung maaaring lumitaw mula sa paggamit nito.',
             style: TextStyle(fontSize: 14, height: 1.5),
           ),
         ),

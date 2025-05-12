@@ -36,16 +36,75 @@ class _NatureOfLegalAssistanceRequestedState
   void initState() {
     super.initState();
     final formState = context.read<FormStateProvider>();
-    if (assistanceOptions.contains(formState.selectedAssistanceType)) {
-      _selectedAssistanceType = formState.selectedAssistanceType;
-    } else if (formState.selectedAssistanceType.isNotEmpty) {
-      _selectedAssistanceType = 'Iba pa (Others)';
-      _otherAssistanceController.text = formState.selectedAssistanceType;
+
+    // Check if form was just cleared after submission
+    final isFormEmpty = formState.selectedAssistanceType.isEmpty &&
+        formState.problems.isEmpty &&
+        formState.problemReason.isEmpty &&
+        formState.desiredSolutions.isEmpty;
+
+    if (isFormEmpty) {
+      // Clear all fields
+      _selectedAssistanceType = null;
+      _otherAssistanceController.clear();
+      _problemsController.clear();
+      _problemReasonController.clear();
+      _desiredSolutionsController.clear();
+    } else {
+      // Restore previously entered values
+      if (assistanceOptions.contains(formState.selectedAssistanceType)) {
+        _selectedAssistanceType = formState.selectedAssistanceType;
+      } else if (formState.selectedAssistanceType.isNotEmpty) {
+        _selectedAssistanceType = 'Iba pa (Others)';
+        _otherAssistanceController.text = formState.selectedAssistanceType;
+      }
+      _problemsController.text = formState.problems;
+      _problemReasonController.text = formState.problemReason;
+      _desiredSolutionsController.text = formState.desiredSolutions;
     }
 
-    _problemsController.text = formState.problems;
-    _problemReasonController.text = formState.problemReason;
-    _desiredSolutionsController.text = formState.desiredSolutions;
+    // Live syncing on input changes
+    _problemsController.addListener(() {
+      formState.updateNatureOfLegalAssistanceRequested(
+        selectedAssistanceType: _getSelectedAssistance(),
+        problems: _problemsController.text,
+        problemReason: _problemReasonController.text,
+        desiredSolutions: _desiredSolutionsController.text,
+      );
+    });
+
+    _problemReasonController.addListener(() {
+      formState.updateNatureOfLegalAssistanceRequested(
+        selectedAssistanceType: _getSelectedAssistance(),
+        problems: _problemsController.text,
+        problemReason: _problemReasonController.text,
+        desiredSolutions: _desiredSolutionsController.text,
+      );
+    });
+
+    _desiredSolutionsController.addListener(() {
+      formState.updateNatureOfLegalAssistanceRequested(
+        selectedAssistanceType: _getSelectedAssistance(),
+        problems: _problemsController.text,
+        problemReason: _problemReasonController.text,
+        desiredSolutions: _desiredSolutionsController.text,
+      );
+    });
+
+    _otherAssistanceController.addListener(() {
+      formState.updateNatureOfLegalAssistanceRequested(
+        selectedAssistanceType: _getSelectedAssistance(),
+        problems: _problemsController.text,
+        problemReason: _problemReasonController.text,
+        desiredSolutions: _desiredSolutionsController.text,
+      );
+    });
+  }
+
+  String _getSelectedAssistance() {
+    return _selectedAssistanceType == 'Iba pa (Others)'
+        ? _otherAssistanceController.text
+        : _selectedAssistanceType ?? '';
   }
 
   @override
@@ -118,6 +177,14 @@ class _NatureOfLegalAssistanceRequestedState
                           _otherAssistanceController.clear();
                         }
                       });
+
+                      final formState = context.read<FormStateProvider>();
+                      formState.updateNatureOfLegalAssistanceRequested(
+                        selectedAssistanceType: _getSelectedAssistance(),
+                        problems: _problemsController.text,
+                        problemReason: _problemReasonController.text,
+                        desiredSolutions: _desiredSolutionsController.text,
+                      );
                     },
                     screenWidth,
                   ),

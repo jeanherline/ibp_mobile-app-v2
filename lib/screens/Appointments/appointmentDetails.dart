@@ -30,6 +30,8 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   bool _hasRequestedNewAppointment =
       false; // Check if an appointment has already been requested
   int _selectedRating = 0; // Store selected rating
+  bool _isJoiningMeeting = false;
+  bool _isSubmittingRequest = false;
 
   @override
   void initState() {
@@ -155,6 +157,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   }
 
   Future<void> joinMeeting(String controlNumber) async {
+    setState(() {
+      _isJoiningMeeting = true;
+    });
+
     try {
       // Get the appointment document
       final appointmentDoc = await FirebaseFirestore.instance
@@ -168,7 +174,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       }
 
       final appointmentData = appointmentDoc.data();
-      final uid = appointmentData?['appointmentDetails']?['uid'];
+      final uid = appointmentData?['uid'];
 
       // Assuming new flattened structure
 
@@ -245,8 +251,14 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
           'User: ${options.userInfo?.displayName}, ${options.userInfo?.email}');
 
       await JitsiMeet().join(options);
+      setState(() {
+        _isJoiningMeeting = false;
+      });
       print('Joined the meeting room: $controlNumber');
     } catch (e) {
+      setState(() {
+        _isJoiningMeeting = false;
+      });
       print('Error joining the meeting: $e');
     }
   }
@@ -360,11 +372,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                 }
 
                 final appointmentDetails = snapshot.data!;
+                final currentUserId =
+                    FirebaseAuth.instance.currentUser?.uid ?? '';
+                final history =
+                    appointmentDetails['rescheduleHistory'] as List?;
+                final userReschedules = history
+                    ?.where(
+                        (entry) => entry['rescheduledByUid'] == currentUserId)
+                    .toList();
+                final reschedulesLeft = 3 - (userReschedules?.length ?? 0);
+
                 final qrCodeUrl =
                     appointmentDetails['appointmentDetails']['qrCode'];
+                final rawStatus = appointmentDetails['appointmentDetails']
+                    ['appointmentStatus'];
                 final appointmentStatus =
-                    appointmentDetails['appointmentDetails']
-                        ['appointmentStatus'];
+                    rawStatus == 'refused' ? 'approved' : rawStatus;
+
                 final scheduleType =
                     appointmentDetails['appointmentDetails']['scheduleType'];
                 final appointmentDate =
@@ -409,8 +433,8 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    const SizedBox(height: 10),
                     if (appointmentStatus != 'done') ...[
-                      const SizedBox(height: 20),
                       const Text(
                         'PAALALA:',
                         style: TextStyle(
@@ -427,8 +451,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                               return 'Ang inyong appointment ay kasalukuyang nasa pagsusuri. Mangyaring maghintay ng kumpirmasyon mula sa aming tanggapan.';
                             } else if (appointmentStatus == 'approved') {
                               return 'Naaprubahan ang inyong appointment. Mangyaring hintayin ang iskedyul ng konsultasyon.';
-                            } else if (appointmentStatus == 'denied' ||
-                                appointmentStatus == 'refused') {
+                            } else if (appointmentStatus == 'denied') {
                               return 'Paumanhin, hindi kayo kwalipikado para sa legal na tulong batay sa impormasyong inyong isinumite.';
                             } else if (appointmentStatus == 'accepted' ||
                                 appointmentStatus == 'scheduled') {
@@ -455,7 +478,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 10),
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(25.0),
@@ -497,55 +520,212 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 ),
                               ),
                             ),
-
-                            const SizedBox(height: 10),
-                            if (appointmentDate != null)
-                              Text(
-                                formatDate(appointmentDate),
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.045,
-                                  color: Colors.black,
+                            if ((appointmentStatus == 'denied' &&
+                                    (appointmentDetails['clientEligibility']
+                                                ?['denialReason'] !=
+                                            null ||
+                                        appointmentDetails['clientEligibility']
+                                                ?['notes'] !=
+                                            null)) ||
+                                (appointmentStatus == 'approved' &&
+                                    appointmentDetails['clientEligibility']
+                                            ?['notes'] !=
+                                        null))
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: appointmentStatus == 'denied'
+                                      ? Colors.red[50]
+                                      : Colors.green[50],
+                                  border: Border.all(
+                                    color: appointmentStatus == 'denied'
+                                        ? Colors.redAccent.withOpacity(0.3)
+                                        : Colors.green.withOpacity(0.3),
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                textAlign: TextAlign.center,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (appointmentStatus == 'denied' &&
+                                        appointmentDetails['clientEligibility']
+                                                ?['denialReason'] !=
+                                            null)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 8.0),
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                                fontSize: 14, height: 1.5),
+                                            children: [
+                                              const TextSpan(
+                                                text: 'Reason for Denial:\n',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.8,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: appointmentDetails[
+                                                            'clientEligibility']
+                                                        ?['denialReason'] ??
+                                                    'N/A',
+                                                style: const TextStyle(
+                                                  color: Colors.redAccent,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    if (appointmentDetails['clientEligibility']
+                                            ?['notes'] !=
+                                        null)
+                                      RichText(
+                                        textAlign: TextAlign.start,
+                                        text: TextSpan(
+                                          style: const TextStyle(
+                                              fontSize: 14, height: 1.5),
+                                          children: [
+                                            const TextSpan(
+                                              text: 'Eligibility Notes:\n',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                letterSpacing: 0.8,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text: appointmentDetails[
+                                                          'clientEligibility']
+                                                      ?['notes'] ??
+                                                  'N/A',
+                                              style: const TextStyle(
+                                                color: Colors.black87,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
+                            if (appointmentDate != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 10.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.calendar_today,
+                                        size: 18, color: Colors.blueGrey),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      formatDate(appointmentDate),
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.045,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
                             const SizedBox(height: 5),
                             // Display the most recent reschedule reason
-                            if (mostRecentRescheduleReason != null &&
+                            if (rescheduleHistory != null &&
+                                rescheduleHistory.isNotEmpty &&
                                 appointmentStatus != 'done')
-                              Text(
-                                mostRecentRescheduleReason,
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  fontStyle: FontStyle.italic,
-                                ),
+                              Builder(
+                                builder: (context) {
+                                  final approvedHistory = rescheduleHistory
+                                      .where((entry) =>
+                                          entry['rescheduleStatus'] ==
+                                          'approved')
+                                      .toList()
+                                    ..sort((a, b) =>
+                                        (b['rescheduleTimestamp'] as Timestamp)
+                                            .compareTo(a['rescheduleTimestamp']
+                                                as Timestamp));
+
+                                  if (approvedHistory.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final mostRecent = approvedHistory.first;
+                                  final remainingHistory =
+                                      approvedHistory.skip(1).toList();
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.only(
+                                            top: 16.0, bottom: 8),
+                                        child: Text(
+                                          'Most Recent Reschedule',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.8,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      _buildRescheduleCard(mostRecent),
+                                      if (remainingHistory.isNotEmpty)
+                                        ExpansionTile(
+                                          title: const Text(
+                                            'View All Previous Reschedules',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          children: remainingHistory
+                                              .map<Widget>((entry) =>
+                                                  _buildRescheduleCard(entry))
+                                              .toList(),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
+                            const SizedBox(height: 10),
                             if (scheduleType == 'Online' &&
                                 appointmentStatus != 'done' &&
                                 appointmentStatus != 'missed') ...[
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 5),
                               ElevatedButton.icon(
-                                onPressed: (appointmentDate != null &&
-                                        DateTime.now().toLocal().day ==
-                                            appointmentDate
-                                                .toDate()
-                                                .toLocal()
-                                                .day &&
-                                        DateTime.now().toLocal().month ==
-                                            appointmentDate
-                                                .toDate()
-                                                .toLocal()
-                                                .month &&
-                                        DateTime.now().toLocal().year ==
-                                            appointmentDate
-                                                .toDate()
-                                                .toLocal()
-                                                .year)
-                                    ? () {
-                                        joinMeeting(widget.controlNumber);
-                                      }
-                                    : null, // disable if not scheduled for today
+                                onPressed: _isJoiningMeeting ||
+                                        !(appointmentDate != null &&
+                                            DateTime.now().toLocal().day ==
+                                                appointmentDate
+                                                    .toDate()
+                                                    .toLocal()
+                                                    .day &&
+                                            DateTime.now().toLocal().month ==
+                                                appointmentDate
+                                                    .toDate()
+                                                    .toLocal()
+                                                    .month &&
+                                            DateTime.now().toLocal().year ==
+                                                appointmentDate
+                                                    .toDate()
+                                                    .toLocal()
+                                                    .year)
+                                    ? null
+                                    : () => joinMeeting(widget.controlNumber),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor:
                                       const Color.fromARGB(255, 12, 122, 17),
@@ -555,10 +735,21 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                icon: const Icon(Icons.video_call,
-                                    color: Colors.white),
+                                icon: _isJoiningMeeting
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.video_call,
+                                        color: Colors.white),
                                 label: Text(
-                                  'Join Meeting',
+                                  _isJoiningMeeting
+                                      ? 'Joining...'
+                                      : 'Join Meeting',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: screenWidth * 0.045,
@@ -567,8 +758,6 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 15),
-
                             if (appointmentStatus == 'missed')
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -585,7 +774,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   ),
                                 ),
                               ),
-                            if (appointmentStatus == 'missed') ...[
+                            const SizedBox(height: 20),
+
+                            if (appointmentStatus == 'missed' ||
+                                appointmentStatus == 'scheduled') ...[
                               const SizedBox(height: 10),
                               if (_hasRequestedNewAppointment) ...[
                                 const Center(
@@ -597,21 +789,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                       fontWeight: FontWeight.bold,
                                       fontStyle: FontStyle.italic,
                                     ),
-                                    textAlign: TextAlign
-                                        .center, // Align text in the center
+                                    textAlign: TextAlign.center,
                                   ),
                                 )
                               ] else ...[
                                 ElevatedButton.icon(
                                   onPressed: () {
+                                    if (userReschedules != null &&
+                                        userReschedules.length >= 3) return;
+
                                     _showRequestForm(
                                         appointmentDetails, userFullName);
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color.fromARGB(255, 12, 122, 17),
+                                    backgroundColor: const Color.fromARGB(
+                                        255, 240, 133, 11), // Orange color
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 15),
+                                        horizontal: 10, vertical: 10),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -627,6 +821,33 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                     ),
                                   ),
                                 ),
+                                if (userReschedules != null &&
+                                    userReschedules.length < 3)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      'You have $reschedulesLeft reschedule(s) left.',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    'Paalala: Maaari ka lamang magsumite ng hanggang tatlong (3) reschedule request. '
+                                    'Kapag lumampas sa limit at hindi ka pa rin nakadalo, kailangan mong magsumite ng panibagong appointment request.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black54,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
                                 if (appointmentStatus == 'done') ...[
                                   const Center(
                                     child: Padding(
@@ -669,12 +890,177 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                               ),
                               _buildStarRating(),
                             ],
-                            const SizedBox(height: 30),
                             qrCodeUrl != null
                                 ? Image.network(qrCodeUrl)
                                 : const Center(
                                     child: Text('No QR code available.')),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 30),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'APPOINTMENT DETAILS',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.8,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.event_note,
+                                          size: 20, color: Colors.blueGrey),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                                fontSize: 15,
+                                                color: Colors.black),
+                                            children: [
+                                              const TextSpan(
+                                                text: 'Appointment Type: ',
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                              TextSpan(
+                                                text: appointmentDetails[
+                                                            'appointmentDetails']
+                                                        ['apptType'] ??
+                                                    'N/A',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.schedule,
+                                          size: 20, color: Colors.blueGrey),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                                fontSize: 15,
+                                                color: Colors.black),
+                                            children: [
+                                              const TextSpan(
+                                                text: 'Schedule Type: ',
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                              TextSpan(
+                                                text: appointmentDetails[
+                                                            'appointmentDetails']
+                                                        ['scheduleType'] ??
+                                                    'N/A',
+                                                style: const TextStyle(
+                                                    fontSize: 15,
+                                                    color: Colors.black),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+// --- Legal Assistance Info Card ---
+                            if (appointmentDetails[
+                                    'legalAssistanceRequested'] !=
+                                null)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'LEGAL ASSISTANCE INFO',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.8,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildInfoRow(
+                                      icon: Icons.assignment_ind,
+                                      title: 'Assistance Type: ',
+                                      value: appointmentDetails[
+                                              'legalAssistanceRequested']
+                                          ['selectedAssistanceType'],
+                                    ),
+                                    _buildInfoRow(
+                                      icon: Icons.report_problem,
+                                      title: 'Problem/s: ',
+                                      value: appointmentDetails[
+                                              'legalAssistanceRequested']
+                                          ['problems'],
+                                    ),
+                                    _buildInfoRow(
+                                      icon: Icons.help_outline,
+                                      title: 'Reason: ',
+                                      value: appointmentDetails[
+                                              'legalAssistanceRequested']
+                                          ['problemReason'],
+                                    ),
+                                    _buildInfoRow(
+                                      icon: Icons.lightbulb_outline,
+                                      title: 'Desired Solution/s: ',
+                                      value: appointmentDetails[
+                                              'legalAssistanceRequested']
+                                          ['desiredSolutions'],
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -876,18 +1262,24 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () async {
-                            if (_formKey.currentState!.validate()) {
-                              _formKey.currentState!.save();
-                              Navigator.pop(context);
-                              await _requestAnotherAppointment(
-                                  appointmentDetails);
-                              setState(() {
-                                _selectedFile = null;
-                                _reason = '';
-                              });
-                            }
-                          },
+                          onPressed: _isSubmittingRequest
+                              ? null
+                              : () async {
+                                  if (_formKey.currentState!.validate()) {
+                                    _formKey.currentState!.save();
+                                    setState(() {
+                                      _isSubmittingRequest = true;
+                                    });
+                                    Navigator.pop(context);
+                                    await _requestAnotherAppointment(
+                                        appointmentDetails);
+                                    setState(() {
+                                      _isSubmittingRequest = false;
+                                      _selectedFile = null;
+                                      _reason = '';
+                                    });
+                                  }
+                                },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF580049),
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -896,14 +1288,23 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                             ),
                             minimumSize: const Size(double.infinity, 50),
                           ),
-                          child: const Text(
-                            'Submit Reschedule Request',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _isSubmittingRequest
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Submit Reschedule Request',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -920,7 +1321,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
 
   Future<void> _requestAnotherAppointment(
       Map<String, dynamic> appointmentDetails) async {
-    final uid = appointmentDetails['appointmentDetails']['uid'];
+    final uid = appointmentDetails['uid'];
 
     if (_isSubmitting) return;
 
@@ -945,14 +1346,29 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
         if (fileUrl == null) throw Exception('Failed to upload file.');
       }
 
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      final nowTimestamp = Timestamp.now();
+
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(widget.controlNumber)
           .update({
         'appointmentDetails.appointmentStatus': 'pending_reschedule',
-        'appointmentDetails.rescheduleRequestReason': _reason,
+        'rescheduleHistory': FieldValue.arrayUnion([
+          {
+            'rescheduleReason': _reason,
+            'rescheduleStatus': "pending",
+            'rescheduleAppointmentType':
+                appointmentDetails['appointmentDetails']['scheduleType'] ?? '',
+            'rescheduleDate': appointmentDetails['appointmentDetails']
+                ['appointmentDate'],
+            'rescheduleTimestamp': nowTimestamp,
+            'rescheduledByUid': currentUser?.uid ?? 'Unknown',
+          }
+        ]),
         'uploadedImages.newRequestUrl': fileUrl ?? '',
-        'appointmentDetails.updatedTime': FieldValue.serverTimestamp(),
+        'updatedTime': nowTimestamp,
       });
 
       await _sendNotification(
@@ -1036,4 +1452,144 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
       throw Exception('Failed to generate QR code');
     }
   }
+}
+
+Widget _buildInfoRow({
+  required IconData icon,
+  required String title,
+  required String? value,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 14.0), // More space between rows
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: Colors.blueGrey),
+        const SizedBox(width: 20), // Increased horizontal spacing
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 15, color: Colors.black),
+              children: [
+                TextSpan(
+                  text: title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(
+                  text: value ?? 'N/A',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildRescheduleCard(Map<String, dynamic> entry) {
+  final date = entry['rescheduleDate'] != null
+      ? (entry['rescheduleDate'] as Timestamp).toDate()
+      : null;
+  final timestamp = entry['rescheduleTimestamp'] != null
+      ? (entry['rescheduleTimestamp'] as Timestamp).toDate()
+      : null;
+  final type = entry['rescheduleAppointmentType'] ?? 'N/A';
+  final reason = entry['rescheduleReason'] ?? 'No reason provided';
+  final statusRaw = entry['rescheduleStatus'] ?? 'N/A';
+  final status = "${statusRaw[0].toUpperCase()}${statusRaw.substring(1)}";
+  final uid = entry['rescheduledByUid'];
+
+  return FutureBuilder<DocumentSnapshot>(
+    future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+    builder: (context, snapshot) {
+      String name = 'Unknown User';
+
+      if (snapshot.connectionState == ConnectionState.done &&
+          snapshot.hasData &&
+          snapshot.data!.exists) {
+        final userData = snapshot.data!.data() as Map<String, dynamic>;
+        name =
+            '${userData['display_name'] ?? ''} ${userData['middle_name'] ?? ''} ${userData['last_name'] ?? ''}'
+                .trim();
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.12),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (date != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  'Original Schedule: ${DateFormat('MMMM d, yyyy • h:mm a').format(date)}',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            Text(
+              'Original Type: $type',
+              style: const TextStyle(
+                fontSize: 13.5,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Reason:\n$reason',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontStyle: FontStyle.italic,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (timestamp != null)
+              Text(
+                'Updated On: ${DateFormat('MMMM d, yyyy • h:mm a').format(timestamp)}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              'Status: $status',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.deepPurple,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Rescheduled By: $name',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

@@ -465,7 +465,7 @@ class _EditProfileState extends State<EditProfile> {
                     required: true),
               ],
               _buildTextField(
-                'Occupation',
+                'Your Occupation',
                 _occupationController,
                 required: true,
                 showNaButton: true,
@@ -988,26 +988,41 @@ class _EditProfileState extends State<EditProfile> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _hasChanges && _formKey.currentState?.validate() == true
+      onPressed: _hasChanges &&
+              !_isUploading &&
+              _formKey.currentState?.validate() == true
           ? () async {
-              await _uploadImage(); // Upload image if selected
-              await _saveProfile(); // Save the profile
+              setState(() => _isUploading = true); // start loading
+              await _uploadImage(); // upload image
+              await _saveProfile(); // save data
+              setState(() => _isUploading = false); // end loading
             }
-          : null, // Disable button if no changes or invalid input
+          : null,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF580049),
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        minimumSize: const Size(
-            double.infinity, 50), // Full width button with proper size
+        minimumSize: const Size(double.infinity, 50),
       ),
-      child: const Text(
-        'Save Changes',
-        style: TextStyle(
-            fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-      ),
+      child: _isUploading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : const Text(
+              'Save Changes',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 
@@ -1093,10 +1108,6 @@ class _EditProfileState extends State<EditProfile> {
         _barangayUploadDate = (result['date'] as Timestamp).toDate();
         _barangayImage = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Barangay Certificate uploaded successfully')),
-      );
     }
 
     if (_dswdImage != null) {
@@ -1108,10 +1119,6 @@ class _EditProfileState extends State<EditProfile> {
         _dswdUploadDate = (result['date'] as Timestamp).toDate();
         _dswdImage = null;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('DSWD Certificate uploaded successfully')),
-      );
     }
 
     if (_paoImage != null) {
@@ -1123,10 +1130,6 @@ class _EditProfileState extends State<EditProfile> {
         _paoUploadDate = (result['date'] as Timestamp).toDate();
         _paoImage = null;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PAO Letter uploaded successfully')),
-      );
     }
 
 // ✅ Always attach to Firestore update

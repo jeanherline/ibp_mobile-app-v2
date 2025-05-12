@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
+    _checkLoginStatus(); // check login before/while playing splash
 
     _controller =
         VideoPlayerController.asset("assets/videos/ibp_splash_screen.mp4")
@@ -36,6 +39,14 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
+  Future<void> _checkLoginStatus() async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  }
+
   @override
   void dispose() {
     _controller?.dispose();
@@ -46,8 +57,10 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: (_controller?.value.isInitialized ?? false)
-          ? SizedBox.expand(
+      body: Stack(
+        children: [
+          if (_controller?.value.isInitialized ?? false)
+            SizedBox.expand(
               child: FittedBox(
                 fit: BoxFit.cover,
                 child: SizedBox(
@@ -56,8 +69,10 @@ class _SplashScreenState extends State<SplashScreen> {
                   child: VideoPlayer(_controller!),
                 ),
               ),
-            )
-          : Container(color: Colors.black),
+            ),
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+        ],
+      ),
     );
   }
 }

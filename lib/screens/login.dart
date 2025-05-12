@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -128,6 +129,46 @@ class _LoginState extends State<Login> {
     }
   }
 
+  Future<void> _continueStandardLogin(User user) async {
+    if (user.emailVerified) {
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userDoc = await userRef.get();
+
+      String userStatus = userDoc.data()?['user_status'] ?? 'inactive';
+
+      // Automatically activate if verified but marked inactive
+      if (userStatus == 'inactive') {
+        await userRef.update({'user_status': 'active'});
+        userStatus = 'active';
+      }
+
+      if (userStatus == 'active') {
+        await _logLoginActivityAndTrustedDevice(user);
+        await _logAuditEntry(user, 'ACCESS', 'Success');
+
+        final token = await user.getIdToken();
+        if (token != null) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('authToken', token);
+          await prefs.setString('userId', user.uid);
+        }
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const Home(activeIndex: 1)),
+        );
+      } else {
+        _showDialog('Account Inactive', 'Your account is not yet activated.');
+        await FirebaseAuth.instance.signOut();
+        await _logAuditEntry(user, 'ACCESS', 'Blocked: Inactive account');
+      }
+    } else {
+      _showDialog(
+          'Email Not Verified', 'Please verify your email before logging in.');
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
   Future<void> _trigger2FAPhoneVerification(User user) async {
     final auth = FirebaseAuth.instance;
 
@@ -167,69 +208,142 @@ class _LoginState extends State<Login> {
   Future<void> _showOTPVerificationDialog(String verificationId) async {
     final TextEditingController otpController = TextEditingController();
     bool isVerifying = false;
+    bool isTrusted = false;
+    int countdown = 120;
+    late Timer timer;
 
-    // Use a dialog context from the current widget tree
+    void startTimer() {
+      timer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (countdown > 0) {
+          setState(() => countdown--);
+        } else {
+          t.cancel();
+        }
+      });
+    }
+
+    startTimer();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Enter OTP'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: otpController,
-              decoration: const InputDecoration(
-                labelText: 'OTP',
-                hintText: 'Enter the OTP sent to your phone',
-              ),
-              keyboardType: TextInputType.number,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Two-Factor Authentication'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter the 6-digit code sent to your registered phone number.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'OTP Code',
+                    counterText: '',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isTrusted,
+                      onChanged: (val) {
+                        setModalState(() => isTrusted = val ?? false);
+                      },
+                    ),
+                    const Expanded(child: Text('Trust this device')),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  countdown > 0
+                      ? 'Resend code in 0:${countdown.toString().padLeft(2, '0')}'
+                      : 'Didn’t get the code?',
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                if (countdown == 0)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _trigger2FAPhoneVerification(
+                          FirebaseAuth.instance.currentUser!);
+                    },
+                    child: const Text('Resend Code'),
+                  ),
+                if (isVerifying)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
             ),
-            if (isVerifying) const SizedBox(height: 16),
-            if (isVerifying)
-              const CircularProgressIndicator(), // Loading spinner
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              setState(() {
-                isVerifying = true; // Start the loading state
-              });
+            actions: [
+              TextButton(
+                onPressed: () {
+                  timer.cancel();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF580049),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isVerifying
+                    ? null
+                    : () async {
+                        setModalState(() => isVerifying = true);
 
-              try {
-                // Create a PhoneAuthCredential with the code
-                PhoneAuthCredential credential = PhoneAuthProvider.credential(
-                  verificationId: verificationId,
-                  smsCode: otpController.text.trim(),
-                );
+                        try {
+                          final credential = PhoneAuthProvider.credential(
+                            verificationId: verificationId,
+                            smsCode: otpController.text.trim(),
+                          );
 
-                // Sign the user in (or link) with the credential
-                await FirebaseAuth.instance.signInWithCredential(credential);
-                await _logLoginActivityAndTrustedDevice(
-                    FirebaseAuth.instance.currentUser!);
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                      builder: (context) => const Home(activeIndex: 1)),
-                );
-              } on FirebaseAuthException catch (e) {
-                _showDialog(
-                    'Verification Failed', e.message ?? 'An error occurred.');
-              } finally {
-                setState(() {
-                  isVerifying = false; // Stop the loading state
-                });
-              }
-            },
-            child: const Text('Verify'),
-          ),
-        ],
-      ),
+                          await FirebaseAuth.instance
+                              .signInWithCredential(credential);
+
+                          if (isTrusted) {
+                            await _logLoginActivityAndTrustedDevice(
+                              FirebaseAuth.instance.currentUser!,
+                            );
+                          }
+
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const Home(activeIndex: 1)),
+                          );
+                        } catch (e) {
+                          _showDialog('Verification Failed', e.toString());
+                        } finally {
+                          setModalState(() => isVerifying = false);
+                          timer.cancel();
+                        }
+                      },
+                child: isVerifying
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Verify'),
+              ),
+            ],
+          );
+        });
+      },
     );
   }
 
@@ -266,49 +380,10 @@ class _LoginState extends State<Login> {
         bool hasLoginActivity = loginActivityQuery.docs.isNotEmpty;
 
         // If no login activity, skip 2FA for the first login
-        if (isTwoFactorEnabled && !hasLoginActivity) {
+        if (isTwoFactorEnabled) {
           await _trigger2FAPhoneVerification(user);
         } else {
-          // Only continue if email is verified
-          if (user.emailVerified) {
-            final userRef =
-                FirebaseFirestore.instance.collection('users').doc(user.uid);
-            final userDoc = await userRef.get();
-
-            String userStatus = userDoc.data()?['user_status'] ?? 'inactive';
-
-            // ✅ Automatically activate user if they verified email but are still marked inactive
-            if (userStatus == 'inactive') {
-              await userRef.update({'user_status': 'active'});
-              userStatus = 'active';
-            }
-
-            if (userStatus == 'active') {
-              await _logLoginActivityAndTrustedDevice(user);
-              await _logAuditEntry(user, 'ACCESS', 'Success');
-
-              final token = await user.getIdToken();
-              if (token != null) {
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.setString('authToken', token);
-                await prefs.setString('userId', user.uid);
-              }
-
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                    builder: (context) => const Home(activeIndex: 1)),
-              );
-            } else {
-              _showDialog(
-                  'Account Inactive', 'Your account is not yet activated.');
-              await FirebaseAuth.instance.signOut();
-              await _logAuditEntry(user, 'ACCESS', 'Blocked: Inactive account');
-            }
-          } else {
-            _showDialog('Email Not Verified',
-                'Please verify your email before logging in.');
-            await FirebaseAuth.instance.signOut();
-          }
+          await _continueStandardLogin(user);
         }
       }
     } on FirebaseAuthException catch (e) {

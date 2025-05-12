@@ -63,13 +63,13 @@ class _LawsJurisprudenceState extends State<LawsJurisprudence> {
                       child: ListBody(
                         children: <Widget>[
                           Text(
-                            'Thank you for using our application, the Philippine Electronic Legal Services and Access - Malolos Chapter (PH-ELSA Malolos), which allows users to book legal consultations via our appointment system. As part of our services, we also provide access to Jur.ph, an AI-powered legal research platform in the Philippines.\n\n'
-                            'Please be informed of the following disclosure and limitation of liability:\n\n'
-                            '• Jur.ph is an independent platform not owned, operated, or maintained by PH-ELSA Malolos or the Integrated Bar of the Philippines. We do not modify, verify, or control the content published on Jur.ph.\n\n'
-                            '• All legal materials, case texts, and information accessed through Jur.ph are provided solely by Jur.ph. They retain full ownership and responsibility for the accuracy and integrity of their content.\n\n'
-                            '• The integration of Jur.ph into our app is purely for informational purposes—to offer users convenient access to legal resources. This does not constitute an endorsement, legal advice, or official representation.\n\n'
-                            '• Users are strongly advised to consult with a licensed legal professional for legal guidance specific to their situation. Reliance on the information from Jur.ph is at your own discretion and risk.\n\n'
-                            '• PH-ELSA Malolos and its developers disclaim any liability for loss, damages, or legal consequences arising from the use of Jur.ph or the interpretation of its content.',
+                            'Maraming salamat sa paggamit ng aming aplikasyon, ang Philippine Electronic Legal Services and Access - Malolos Chapter (PH-ELSA Malolos), na nagbibigay ng serbisyo sa pag-book ng legal na konsultasyon sa pamamagitan ng aming appointment system. Bilang karagdagang serbisyo, nagbibigay rin kami ng access sa Jur.ph, isang AI-powered legal research platform sa Pilipinas.\n\n'
+                            'Pakitandaan ang sumusunod na paalala at limitasyon ng pananagutan:\n\n'
+                            '• Ang Jur.ph ay isang independiyenteng platform na hindi pagmamay-ari, pinapatakbo, o minementena ng PH-ELSA Malolos o ng Integrated Bar of the Philippines. Wala kaming kontrol, pag-verify, o pag-edit sa anumang nilalamang inilalathala sa Jur.ph.\n\n'
+                            '• Lahat ng legal na materyales, teksto ng mga kaso, at impormasyong makukuha sa Jur.ph ay eksklusibong galing sa Jur.ph. Sila ang may buong responsibilidad at karapatan sa katumpakan at integridad ng kanilang nilalaman.\n\n'
+                            '• Ang pagsasama ng Jur.ph sa aming app ay para lamang sa layuning pampagbibigay-impormasyon—upang mabigyan ang mga user ng madaling access sa legal na impormasyon. Ito ay hindi nangangahulugang pag-eendorso, pagbibigay ng legal na payo, o opisyal na representasyon.\n\n'
+                            '• Hinihikayat ang lahat ng user na kumonsulta sa isang lisensyadong abogado para sa legal na payong angkop sa kanilang sitwasyon. Anumang pagtitiwala sa impormasyong galing sa Jur.ph ay nasa sariling desisyon at pananagutan ng user.\n\n'
+                            '• Ang PH-ELSA Malolos at ang mga developer nito ay hindi mananagot sa anumang pagkawala, pinsala, o legal na epekto na maaaring idulot ng paggamit sa Jur.ph o interpretasyon ng nilalaman nito.',
                             style: TextStyle(fontSize: 14, height: 1.5),
                           ),
                         ],

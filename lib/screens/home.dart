@@ -8,6 +8,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:ibp_app_ver2/navbar.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:ibp_app_ver2/screens/news_webview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required int activeIndex});
@@ -32,20 +33,57 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _fetchUserData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     User? user = FirebaseAuth.instance.currentUser;
+
     if (user != null) {
-      DocumentSnapshot users = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      setState(() {
-        _firstName = users['display_name'];
-        _displayName = users['display_name'];
-        _middleName = users['middle_name'];
-        _lastName = users['last_name'];
-        _email = users['email'];
-        _userQrCode = users['userQrCode'];
-      });
+      final cachedName = prefs.getString('display_name');
+      final cachedQrCode = prefs.getString('user_qr_code');
+      final cachedEmail = prefs.getString('email');
+      final cachedMiddleName = prefs.getString('middle_name');
+      final cachedLastName = prefs.getString('last_name');
+
+      if (cachedName != null &&
+          cachedQrCode != null &&
+          cachedEmail != null &&
+          cachedMiddleName != null &&
+          cachedLastName != null) {
+        setState(() {
+          _firstName = cachedName;
+          _displayName = cachedName;
+          _userQrCode = cachedQrCode;
+          _email = cachedEmail;
+          _middleName = cachedMiddleName;
+          _lastName = cachedLastName;
+        });
+      } else {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        final displayName = userDoc['display_name'];
+        final middleName = userDoc['middle_name'];
+        final lastName = userDoc['last_name'];
+        final email = userDoc['email'];
+        final userQrCode = userDoc['userQrCode'];
+
+        // Cache all values
+        await prefs.setString('display_name', displayName);
+        await prefs.setString('middle_name', middleName);
+        await prefs.setString('last_name', lastName);
+        await prefs.setString('email', email);
+        await prefs.setString('user_qr_code', userQrCode);
+
+        setState(() {
+          _firstName = displayName;
+          _displayName = displayName;
+          _middleName = middleName;
+          _lastName = lastName;
+          _email = email;
+          _userQrCode = userQrCode;
+        });
+      }
     }
   }
 
@@ -81,14 +119,14 @@ class _HomeState extends State<Home> {
           ),
           content: const SingleChildScrollView(
             child: Text(
-              'Thank you for using our application, the Philippine Electronic Legal Services and Access - Malolos Chapter (PH-ELSA Malolos), which allows users to book legal consultations via our appointment system. As part of our services, we also provide access to Jur.ph, an AI-powered legal research platform in the Philippines.\n\n'
-              'Please be informed of the following disclosure and limitation of liability:\n\n'
-              '• Jur.ph is an independent platform not owned, operated, or maintained by PH-ELSA Malolos or the Integrated Bar of the Philippines. We do not modify, verify, or control the content published on Jur.ph.\n\n'
-              '• All legal materials, case texts, and information accessed through Jur.ph are provided solely by Jur.ph. They retain full ownership and responsibility for the accuracy and integrity of their content.\n\n'
-              '• The integration of Jur.ph into our app is purely for informational purposes—to offer users convenient access to legal resources. This does not constitute an endorsement, legal advice, or official representation.\n\n'
-              '• Users are strongly advised to consult with a licensed legal professional for legal guidance specific to their situation. Reliance on the information from Jur.ph is at your own discretion and risk.\n\n'
-              '• PH-ELSA Malolos and its developers disclaim any liability for loss, damages, or legal consequences arising from the use of Jur.ph or the interpretation of its content.\n\n'
-              'By continuing, you acknowledge that you have read and understood this disclaimer and agree to proceed at your own discretion.',
+              'Maraming salamat sa paggamit ng aming aplikasyon, ang Philippine Electronic Legal Services and Access - Malolos Chapter (PH-ELSA Malolos), na nagbibigay ng serbisyo sa pag-book ng legal na konsultasyon sa pamamagitan ng aming appointment system. Bilang karagdagang serbisyo, nagbibigay rin kami ng access sa Jur.ph, isang AI-powered legal research platform sa Pilipinas.\n\n'
+              'Pakitandaan ang sumusunod na paalala at limitasyon ng pananagutan:\n\n'
+              '• Ang Jur.ph ay isang independiyenteng platform na hindi pagmamay-ari, pinapatakbo, o minementena ng PH-ELSA Malolos o ng Integrated Bar of the Philippines. Wala kaming kontrol, pag-verify, o pag-edit sa anumang nilalamang inilalathala sa Jur.ph.\n\n'
+              '• Lahat ng legal na materyales, teksto ng mga kaso, at impormasyong makukuha sa Jur.ph ay eksklusibong galing sa Jur.ph. Sila ang may buong responsibilidad at karapatan sa katumpakan at integridad ng kanilang nilalaman.\n\n'
+              '• Ang pagsasama ng Jur.ph sa aming app ay para lamang sa layuning pampagbibigay-impormasyon—upang mabigyan ang mga user ng madaling access sa legal na impormasyon. Ito ay hindi nangangahulugang pag-eendorso, pagbibigay ng legal na payo, o opisyal na representasyon.\n\n'
+              '• Hinihikayat ang lahat ng user na kumonsulta sa isang lisensyadong abogado para sa legal na payong angkop sa kanilang sitwasyon. Anumang pagtitiwala sa impormasyong galing sa Jur.ph ay nasa sariling desisyon at pananagutan ng user.\n\n'
+              '• Ang PH-ELSA Malolos at ang mga developer nito ay hindi mananagot sa anumang pagkawala, pinsala, o legal na epekto na maaaring idulot ng paggamit sa Jur.ph o interpretasyon ng nilalaman nito.\n\n'
+              'Sa pagpapatuloy, kinikilala mong nabasa at naunawaan mo ang paalalang ito at sumasang-ayon kang magpatuloy ayon sa iyong sariling pagpapasya.',
               style: TextStyle(fontSize: 14, height: 1.5),
             ),
           ),
@@ -314,34 +352,34 @@ class _HomeState extends State<Home> {
                       controller: _pageController,
                       children: [
                         _buildPageItem(
-                          title: '|  Mag-request ng Legal Consultation',
+                          title: '|  Legal na Tulong sa Isang Tap',
                           description:
-                              'Mag-request ng legal consultation at hintayin ang abiso mula sa IBP Malolos. Sila ang magbibigay ng iskedyul, maaaring walk-in o online, depende sa availability at assessment. Real-time updates? Diretso sa app mo!',
+                              'Ang PH-ELSA ay naglalayong gawing mas madali, mabilis, at accessible ang libreng serbisyong legal. Mula appointment request, anunsyo, AI assistance, chat support, hanggang video call consultation. Lahat ay nasa isang app para sa bawat Pilipino.',
                           color: const Color(0xFF221F1F),
                         ),
                         _buildPageItem(
-                          title: '|  QR Code para sa Walk-in Process',
+                          title: '|  Konsultasyong Legal',
                           description:
-                              'May kumpirmadong appointment? Dalhin at ipakita ang iyong QR code sa front desk sa mismong araw ng konsultasyon. Gamit ito para sa mas mabilis na verification, iwas pila, at mas maayos na daloy ng serbisyo!',
-                          color: const Color(0xFFB73CA8),
+                              'Ibahagi ang iyong problema sa batas at hintayin ang abiso mula sa IBP Malolos. Pwedeng walk-in o online ang consultation, depende sa assessment. Lahat ng ito ay pwedeng gawin gamit lang ang PH-ELSA app.',
+                          color: const Color(0xFF4A148C),
                         ),
                         _buildPageItem(
-                          title: '|  Upload at Update ng Dokumento',
+                          title: '|  Maging kwalipikado',
                           description:
-                              'I-upload ang mga kinakailangang dokumento gaya ng Certificate of Indigency mula sa Barangay o DSWD, at PAO Disqualification Letter direkta sa app. Siguraduhing mag-reupload kada 6 na buwan para mapanatiling valid at updated ang inyong requirements.',
-                          color: Color(0xFF6A5ACD),
+                              'I-upload ang Barangay at DSWD Certificates at PAO Disqualification Letter. Siguraduhing laging updated ang iyong mga dokumento upang manatiling valid ang iyong eligibility sa serbisyong legal.',
+                          color: const Color(0xFF6A5ACD),
                         ),
                         _buildPageItem(
-                          title: '|  Mabilisang Sagot gamit si Elsa at Jur.ph',
+                          title: '|  Elsa: AI Legal Chat Assistant',
                           description:
-                              'May legal na tanong? Gamitin si Elsa, ang aming AI Legal Assistant, para sa mabilisang sagot. Pwede ka ring mag-explore ng mga case digests, batas, at jurisprudence gamit ang Jur.ph viewer. Lahat ito, nasa loob ng app!',
-                          color: Color(0xFF8B2E2E),
+                              'May tanong tungkol sa batas? Gamitin si Elsa, ang AI Legal Assistant ng PH-ELSA. Magtanong anumang oras at makatanggap ng legal information mula sa aming smart assistant na available 24/7.',
+                          color: const Color(0xFF8B2E2E),
                         ),
                         _buildPageItem(
-                          title: '|  Serbisyong Legal para sa Lahat',
+                          title: '|  Chat Support',
                           description:
-                              'Walang bayad. Walang komplikado. Sa PH-ELSA app, libre at madaling makuha ang serbisyong legal para sa bawat Pilipino. Lalo na sa mga higit na nangangailangan ng tulong!',
-                          color: Color(0xFF3F51B5),
+                              'May concern sa appointment o dokumento? I-message agad ang IBP-Malolos staff gamit ang built-in chat. Sa PH-ELSA app, asahan ang mabilis at malinaw na tulong sa bawat hakbang ng proseso.',
+                          color: const Color(0xFF00695C),
                         ),
                       ],
                     ),
@@ -472,9 +510,9 @@ class _HomeState extends State<Home> {
                                       builder: (BuildContext context) {
                                         return AlertDialog(
                                           title: const Text(
-                                              'Kumpletuhin o I-update ang Profile'),
+                                              'I-update ang Profile'),
                                           content: const Text(
-                                            'Siguraduhing kumpleto ang iyong profile kabilang ang address, pangalan at edad ng mga anak (kung hindi single), at ang lahat ng dokumento (Barangay, DSWD, PAO) ay hindi lalagpas sa 6 na buwan mula sa petsa ng pagkaka-upload.',
+                                            'Tiyakin na kumpleto ang iyong profile kabilang ang address, pangalan at edad ng mga anak (kung hindi single) at ang lahat ng kinakailangang dokumento mula sa Barangay, DSWD at PAO bago magsumite ng request.',
                                           ),
                                           actions: [
                                             TextButton(

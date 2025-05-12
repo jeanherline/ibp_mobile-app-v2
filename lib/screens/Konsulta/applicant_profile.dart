@@ -35,7 +35,26 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreSavedFormValues();
+    });
+  }
+
+  void _restoreSavedFormValues() {
+    final formState = context.read<FormStateProvider>();
+
+    setState(() {
+      _fullNameController.text = formState.fullName ?? '';
+      _dobController.text = formState.dob ?? '';
+      _addressController.text = formState.address ?? '';
+      _cityController.text = formState.city ?? '';
+      _contactNumberController.text = formState.contactNumber ?? '';
+      _selectedGender = formState.selectedGender ?? '';
+      _spouseNameController.text = formState.spouseName ?? '';
+      _spouseOccupationController.text = formState.spouseOccupation ?? '';
+      _childrenNamesAgesController.text = formState.childrenNamesAges ?? '';
+      _selectedCity = formState.city ?? '';
+    });
   }
 
   Future<void> _fetchUserData() async {
