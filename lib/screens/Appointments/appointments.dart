@@ -156,9 +156,8 @@ class _AppointmentsListState extends State<AppointmentsList> {
                               as Timestamp)
                           .toDate()
                       : null;
-              final newRequest =
-                  appointment['appointmentDetails']['newRequest'] ?? false;
-              final read = appointment['read'] ?? false;
+              final readRaw = appointment['read'];
+              final read = readRaw is bool ? readRaw : readRaw == 'true';
 
               bool isMissedAppointment() {
                 if (appointmentDate != null && appointmentStatus != 'done') {
@@ -277,30 +276,39 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                 ),
                               ),
 
-                            if (appointment['clientEligibility']?['notes'] !=
-                                null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2.0),
-                                child: RichText(
-                                  textAlign: TextAlign.start,
-                                  text: TextSpan(
-                                    style: const TextStyle(
-                                        fontSize: 14, height: 1.5),
-                                    children: [
-                                      TextSpan(
-                                        text: appointment['clientEligibility']
-                                            ['notes'],
-                                        style: const TextStyle(
-                                          color: Colors.black87,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            _buildEligibilityNote(appointment, rawStatus),
+
                             const SizedBox(height: 8),
                             // Status and appointment type block with background color
+                            // If scheduled, show Appt. Schedule first
+                            if (appointmentStatus.toLowerCase() ==
+                                    'scheduled' &&
+                                appointmentDate != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6.0),
+                                child: Row(
+                                  children: [
+                                    const Text(
+                                      'Appt. Schedule: ',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat('MMMM dd, yyyy \'at\' hh:mm a')
+                                          .format(appointmentDate),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+// Status and appointment type
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
@@ -339,7 +347,7 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                       if (appointmentStatus.toLowerCase() ==
                                           'missed')
                                         const Text(
-                                          'Missed: ',
+                                          'You have missed your appointment.',
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: Color.fromARGB(
@@ -347,37 +355,8 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                             fontWeight: FontWeight.bold,
                                           ),
                                         )
-                                      else
-                                        const Text(
-                                          'Appt. Schedule: ',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      Text(
-                                        DateFormat(
-                                                'MMMM dd, yyyy \'at\' hh:mm a')
-                                            .format(appointmentDate),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                        ),
-                                      ),
                                     ],
                                   ),
-                                  if (newRequest)
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 5),
-                                      child: Text(
-                                        'You have requested a new appt. for this',
-                                        style: TextStyle(
-                                          fontStyle: FontStyle.italic,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
                                 ],
                               )
                             else if (appointment['rescheduleHistory'] != null &&
@@ -462,4 +441,41 @@ void main() {
       activeIndex: 1,
     ),
   ));
+}
+
+Widget _buildEligibilityNote(
+    Map<String, dynamic> appointment, String rawStatus) {
+  final notes =
+      (appointment['clientEligibility']?['notes'] ?? '').toString().trim();
+
+  if ([
+    'scheduled',
+    'approved',
+    'accepted',
+    'done',
+    'missed',
+    'refused',
+    'denied'
+  ].contains(rawStatus.toLowerCase())) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2.0),
+      child: RichText(
+        textAlign: TextAlign.start,
+        text: TextSpan(
+          style: const TextStyle(fontSize: 14, height: 1.5),
+          children: [
+            TextSpan(
+              text: notes.isNotEmpty ? notes : 'No further reason provided.',
+              style: const TextStyle(
+                color: Colors.black87,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  return const SizedBox.shrink(); // No space if nothing to show
 }

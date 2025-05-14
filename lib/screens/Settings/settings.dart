@@ -12,6 +12,8 @@ import 'package:ibp_app_ver2/screens/Settings/change_password.dart';
 import 'package:ibp_app_ver2/screens/Settings/login_activity.dart';
 import 'package:ibp_app_ver2/screens/Settings/terms_and_conditions.dart';
 import 'package:ibp_app_ver2/screens/Settings/trusted_devices.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
       false; // To track the phone verification progress
   String? _phoneNumber; // To store the user's phone number
   bool _is2FALoading = false;
+  int? _resendToken;
 
   @override
   void initState() {
@@ -198,16 +201,29 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                     ),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: isTrusted,
-                          onChanged: (val) {
-                            setModalState(() => isTrusted = val ?? false);
-                          },
-                        ),
-                        const Expanded(child: Text('Trust this device')),
-                      ],
+                    FutureBuilder<bool>(
+                      future: _isCurrentDeviceTrusted(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const SizedBox(); // Placeholder while checking
+                        }
+
+                        if (snapshot.data == true) {
+                          return const SizedBox(); // Already trusted, hide checkbox
+                        }
+
+                        return Row(
+                          children: [
+                            Checkbox(
+                              value: isTrusted,
+                              onChanged: (val) {
+                                setModalState(() => isTrusted = val ?? false);
+                              },
+                            ),
+                            const Expanded(child: Text('Trust this device')),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -341,7 +357,8 @@ class _SettingsPageState extends State<SettingsPage> {
     return rawPhone; // fallback
   }
 
-  Future<void> _verifyPhoneNumber(String phoneNumber) async {
+  Future<void> _verifyPhoneNumber(String phoneNumber,
+      {int? resendToken}) async {
     setState(() {
       _isPhoneVerificationInProgress = true;
     });
@@ -351,8 +368,8 @@ class _SettingsPageState extends State<SettingsPage> {
     await FirebaseAuth.instance.verifyPhoneNumber(
       phoneNumber: formattedPhone,
       timeout: const Duration(seconds: 60),
+      forceResendingToken: resendToken, // ✅ this enables resend
       verificationCompleted: (PhoneAuthCredential credential) async {
-        // Automatically verify if possible
         await _signInWithPhoneAuthCredential(credential);
       },
       verificationFailed: (FirebaseAuthException e) {
@@ -363,12 +380,12 @@ class _SettingsPageState extends State<SettingsPage> {
           _isPhoneVerificationInProgress = false;
         });
       },
-      codeSent: (String verificationId, int? resendToken) {
+      codeSent: (String verificationId, int? newResendToken) {
         setState(() {
           _verificationId = verificationId;
+          _resendToken = newResendToken; // ✅ save for reuse
         });
-        // Show the OTP input dialog
-        _showOtpInputModal(context);
+        _showOtpInputModal(context); // show OTP input
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         setState(() {
@@ -409,13 +426,23 @@ class _SettingsPageState extends State<SettingsPage> {
                   setState(() {
                     _phoneNumber = phoneNumber;
                   });
+
                   await FirebaseFirestore.instance
                       .collection('users')
                       .doc(FirebaseAuth.instance.currentUser!.uid)
                       .update({'phone': phoneNumber});
 
                   Navigator.of(context).pop();
+
                   await _verifyPhoneNumber(phoneNumber);
+
+                  setState(() {
+                    _is2FALoading = false;
+                  });
+                } else {
+                  setState(() {
+                    _is2FALoading = false;
+                  });
                 }
               },
               child: const Text('Verify'),
@@ -440,7 +467,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _showPhoneNumberModal(context);
           } else {
             // Phone number exists, initiate verification
-            await _verifyPhoneNumber(_phoneNumber!);
+            await _verifyPhoneNumber(_phoneNumber!, resendToken: _resendToken);
           }
         } else {
           // Disabling 2FA
@@ -898,7 +925,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Once deactivated, you will be signed out and will not be able to access your account until reactivated.',
+                  'Once deactivated, you will be signed out and will no longer be able to access your account.',
                   style: TextStyle(fontSize: 14, color: Colors.redAccent),
                 ),
               ],
@@ -989,5 +1016,35 @@ class SettingTile extends StatelessWidget {
           const Icon(Icons.arrow_forward_ios, color: Color(0xFF580049)),
       onTap: onTap,
     );
+  }
+}
+
+Future<bool> _isCurrentDeviceTrusted() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return false;
+
+  final deviceId =
+      await _getCurrentDeviceId(); // You must define how to get device ID
+  final doc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('trusted_devices')
+      .doc(deviceId)
+      .get();
+
+  return doc.exists;
+}
+
+Future<String> _getCurrentDeviceId() async {
+  final deviceInfo = DeviceInfoPlugin();
+
+  if (Platform.isAndroid) {
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    return 'android-${androidInfo.id}';
+  } else if (Platform.isIOS) {
+    IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+    return 'ios-${iosInfo.identifierForVendor}';
+  } else {
+    return 'unknown-device';
   }
 }

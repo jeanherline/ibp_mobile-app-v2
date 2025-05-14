@@ -6,6 +6,7 @@ import 'package:ibp_app_ver2/navbar.dart';
 import 'package:ibp_app_ver2/qr_code_scanner_screen.dart';
 import 'package:ibp_app_ver2/screens/Profile/edit_profile.dart';
 import 'package:ibp_app_ver2/screens/Settings/settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key, required int activeIndex});
@@ -93,9 +94,13 @@ class _ProfileScreenState extends State<Profile> {
         await _saveSignOutAuditLog(
             user); // Log sign-out before actually signing out
       }
+
+      // Clear SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
       await FirebaseAuth.instance.signOut();
-      Navigator.of(context)
-          .pushReplacementNamed('/login'); // Navigate back to the login screen
+      Navigator.of(context).pushReplacementNamed('/login');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to log out. Please try again.')),
@@ -211,9 +216,8 @@ class _ProfileScreenState extends State<Profile> {
               if (data != null) {
                 _photoUrl = data['photo_url'] ?? '';
                 String firstName = data['display_name'] ?? '';
-                String middleName = data['middle_name'] ?? '';
                 String lastName = data['last_name'] ?? '';
-                _displayName = '$firstName $middleName $lastName';
+                _displayName = '$firstName $lastName';
                 _city = data['city'] ?? '';
                 _memberType = data['member_type'] ?? '';
                 _userQrCode = data['userQrCode'];

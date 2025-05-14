@@ -316,12 +316,8 @@ class _EditProfileState extends State<EditProfile> {
         onChanged: (value) => _checkForChanges(),
         maxLines: 3,
         validator: required
-            ? (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter $label';
-                }
-                return null;
-              }
+            ? (val) =>
+                val == null || val == 'Select' ? 'Please select $label' : null
             : null,
         decoration: InputDecoration(
           label: RichText(
@@ -940,12 +936,19 @@ class _EditProfileState extends State<EditProfile> {
     ValueChanged<String?> onChanged, {
     required bool required,
   }) {
+    final List<String> dropdownItems = [
+      'Select',
+      ...items.where((item) => item != 'Select')
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: DropdownButtonFormField<String>(
-        value: value,
+        value:
+            value == null || !dropdownItems.contains(value) ? 'Select' : value,
         validator: required
-            ? (val) => val == null ? 'Please select $label' : null
+            ? (val) =>
+                val == null || val == 'Select' ? 'Please select $label' : null
             : null,
         decoration: InputDecoration(
           label: RichText(
@@ -970,14 +973,13 @@ class _EditProfileState extends State<EditProfile> {
           contentPadding:
               const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
-        items: items
+        items: dropdownItems
             .map((item) => DropdownMenuItem(
                   value: item,
                   child: Text(
                     item,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 15), // You can tweak this if needed
+                    style: const TextStyle(fontSize: 15),
                   ),
                 ))
             .toList(),

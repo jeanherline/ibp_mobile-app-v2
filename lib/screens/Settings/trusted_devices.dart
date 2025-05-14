@@ -58,13 +58,20 @@ class _TrustedDevicesPageState extends State<TrustedDevicesPage> {
   }
 
   // Function to format the last login time
-  String _formatLastLoginTime(String lastLogin) {
+  String _formatLastLoginTime(dynamic lastLogin) {
     try {
-      DateTime parsedDate = DateTime.parse(lastLogin);
-      return DateFormat('EEE, MMM d, y h:mm a')
-          .format(parsedDate); // e.g., "Mon, Aug 23, 2021 2:35 PM"
+      DateTime parsedDate;
+      if (lastLogin is Timestamp) {
+        parsedDate = lastLogin.toDate();
+      } else if (lastLogin is String) {
+        parsedDate = DateTime.parse(lastLogin);
+      } else {
+        return 'Unknown';
+      }
+
+      return DateFormat('EEE, MMM d, y h:mm a').format(parsedDate);
     } catch (e) {
-      return lastLogin; // In case of error, return the raw string
+      return 'Invalid date';
     }
   }
 
