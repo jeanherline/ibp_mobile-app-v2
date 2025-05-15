@@ -621,6 +621,7 @@ class _SignUpState extends State<SignUp> {
                     'Guiguinto',
                     'Hagonoy',
                     'Marilao',
+                    'Malolos',
                     'Norzagaray',
                     'Obando',
                     'Pandi',

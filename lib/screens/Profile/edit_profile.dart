@@ -34,6 +34,9 @@ class _EditProfileState extends State<EditProfile> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _childrenNamesAgesController =
       TextEditingController();
+  final TextEditingController _otherEmploymentTypeController =
+      TextEditingController();
+  String _customEmploymentType = '';
 
   String _barangayImageUrl = '';
   String _dswdImageUrl = '';
@@ -109,17 +112,15 @@ class _EditProfileState extends State<EditProfile> {
           _employerNameController.text = data['employerName'] ?? '';
           _employerAddressController.text = data['employerAddress'] ?? '';
           _monthlyIncomeController.text = data['monthlyIncome'] ?? '';
-          const validEmploymentTypes = [
-            'Lokal na Trabaho (Local Employer/Agency)',
-            'Dayuhang Amo (Foreign Employer)',
-            'Sa sarili nagttrabaho (Self-Employed)',
-            'Iba pa (Others)',
-            'N/A'
-          ];
-          final fetchedType = data['employmentType'] ?? 'Select';
-          _selectedEmploymentType =
-              validEmploymentTypes.contains(fetchedType) ? fetchedType : null;
+          final savedEmployment = userData['employmentType'] ?? '';
 
+          if (employmentOptions.contains(savedEmployment)) {
+            _selectedEmploymentType = savedEmployment;
+          } else {
+            _selectedEmploymentType = 'Iba pa (Others)';
+            _otherEmploymentTypeController.text = savedEmployment;
+            _customEmploymentType = savedEmployment;
+          }
           _addressController.text = data['address'] ?? '';
           _childrenNamesAgesController.text = data['childrenNamesAges'] ?? '';
 
@@ -139,7 +140,9 @@ class _EditProfileState extends State<EditProfile> {
             'employerName': _employerNameController.text,
             'employerAddress': _employerAddressController.text,
             'monthlyIncome': _monthlyIncomeController.text,
-            'employmentType': _selectedEmploymentType,
+            'employmentType': _selectedEmploymentType == 'Iba pa (Others)'
+                ? _customEmploymentType
+                : _selectedEmploymentType ?? '',
             'address': _addressController.text,
             'childrenNamesAges': _selectedMaritalStatus == 'Single'
                 ? 'N/A'
@@ -159,6 +162,12 @@ class _EditProfileState extends State<EditProfile> {
       }
     }
   }
+
+  final List<String> employmentOptions = [
+    'Lokal na Trabaho (Local Employer/Agency)',
+    'Dayuhang Amo (Foreign Employer)',
+    'Sa sarili nagttrabaho (Self-Employed)',
+  ];
 
   Future<Map<String, dynamic>> _uploadDocument(
       File file, String pathLabel) async {
@@ -198,7 +207,9 @@ class _EditProfileState extends State<EditProfile> {
       'employerName': _employerNameController.text,
       'employerAddress': _employerAddressController.text,
       'monthlyIncome': _monthlyIncomeController.text,
-      'employmentType': _selectedEmploymentType,
+      'employmentType': _selectedEmploymentType == 'Iba pa (Others)'
+          ? _otherEmploymentTypeController.text.trim()
+          : _selectedEmploymentType ?? '',
       'address': _addressController.text,
       'childrenNamesAges': _selectedMaritalStatus == 'Single'
           ? 'N/A'
@@ -539,15 +550,12 @@ class _EditProfileState extends State<EditProfile> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDropdown(
-                    'Kind of Employment',
-                    _selectedEmploymentType,
+                    'Employment Type',
+                    _selectedEmploymentType ?? '',
                     required: true,
                     [
-                      'Lokal na Trabaho (Local Employer/Agency)',
-                      'Dayuhang Amo (Foreign Employer)',
-                      'Sa sarili nagttrabaho (Self-Employed)',
+                      ...employmentOptions,
                       'Iba pa (Others)',
-                      'N/A'
                     ],
                     (value) {
                       setState(() {
@@ -556,6 +564,21 @@ class _EditProfileState extends State<EditProfile> {
                       });
                     },
                   ),
+                  if (_selectedEmploymentType == 'Iba pa (Others)')
+                    TextFormField(
+                      controller: _otherEmploymentTypeController,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: const InputDecoration(
+                        labelText: 'Specify Other Employment Type',
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (value) {
+                        _customEmploymentType = value;
+                        _checkForChanges();
+                      },
+                    ),
                 ],
               ),
               _buildDropdown(
@@ -573,6 +596,7 @@ class _EditProfileState extends State<EditProfile> {
                   'Guiguinto',
                   'Hagonoy',
                   'Marilao',
+                  'Malolos',
                   'Norzagaray',
                   'Obando',
                   'Pandi',
@@ -1062,7 +1086,9 @@ class _EditProfileState extends State<EditProfile> {
       'employerName': _employerNameController.text,
       'employerAddress': _employerAddressController.text,
       'monthlyIncome': _monthlyIncomeController.text,
-      'employmentType': _selectedEmploymentType,
+      'employmentType': _selectedEmploymentType == 'Iba pa (Others)'
+          ? _otherEmploymentTypeController.text.trim()
+          : _selectedEmploymentType ?? '',
       'address': _addressController.text,
       'childrenNamesAges': _selectedMaritalStatus == 'Single'
           ? 'N/A'
@@ -1239,88 +1265,111 @@ Widget _buildUploadButton(
 
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center, // ✅ Center alignment
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              if (hasUploadedFile) {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) {
-                    return SafeArea(
-                      child: Wrap(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.image),
-                            title: const Text('View Image'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              showDialog(
-                                context: context,
-                                builder: (_) => Dialog(
-                                  backgroundColor: Colors.black87,
-                                  insetPadding: const EdgeInsets.all(20),
-                                  child: GestureDetector(
-                                    onTap: () => Navigator.of(context).pop(),
-                                    child: InteractiveViewer(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: file != null
-                                            ? Image.file(file)
-                                            : Image.network(
-                                                imageUrl!,
-                                                fit: BoxFit.contain,
-                                                loadingBuilder:
-                                                    (context, child, progress) {
-                                                  if (progress == null)
-                                                    return child;
-                                                  return const Center(
-                                                      child:
-                                                          CircularProgressIndicator());
-                                                },
-                                                errorBuilder: (context, error,
-                                                        stackTrace) =>
-                                                    const Text(
-                                                        'Failed to load image',
-                                                        style: TextStyle(
-                                                            color: Colors.red)),
-                                              ),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (hasUploadedFile) {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) {
+                        return SafeArea(
+                          child: Wrap(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.image),
+                                title: const Text('View Image'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => Dialog(
+                                      backgroundColor: Colors.black87,
+                                      insetPadding: const EdgeInsets.all(20),
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            Navigator.of(context).pop(),
+                                        child: InteractiveViewer(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            child: file != null
+                                                ? Image.file(file)
+                                                : Image.network(
+                                                    imageUrl!,
+                                                    fit: BoxFit.contain,
+                                                    loadingBuilder: (context,
+                                                        child, progress) {
+                                                      if (progress == null)
+                                                        return child;
+                                                      return const Center(
+                                                        child:
+                                                            CircularProgressIndicator(),
+                                                      );
+                                                    },
+                                                    errorBuilder: (context,
+                                                            error,
+                                                            stackTrace) =>
+                                                        const Text(
+                                                            'Failed to load image',
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .red)),
+                                                  ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              );
-                            },
+                                  );
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.upload),
+                                title: const Text('Reupload'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  onTap(); // trigger picker again
+                                },
+                              ),
+                            ],
                           ),
-                          ListTile(
-                            leading: const Icon(Icons.upload),
-                            title: const Text('Reupload'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              onTap(); // trigger picker again
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     );
-                  },
-                );
-              } else {
-                onTap(); // open picker for first upload
-              }
-            },
-            icon: Icon(icon),
-            label: Text(buttonText),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: bgColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                  } else {
+                    onTap(); // open picker for first upload
+                  }
+                },
+                icon: Icon(icon),
+                label: Text(buttonText),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: bgColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
+        if (uploadDate != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0),
+            child: Text(
+              'Uploaded on: ${DateFormat.yMMMd().format(uploadDate)} (${isExpired ? "Expired" : "Valid"})',
+              style: TextStyle(
+                fontSize: 12,
+                color: isExpired ? Colors.red : Colors.green,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
       ],
     ),
   );

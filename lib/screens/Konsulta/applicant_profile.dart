@@ -761,6 +761,7 @@ class _ApplicantProfileState extends State<ApplicantProfile> {
       'Guiguinto',
       'Hagonoy',
       'Marilao',
+      'Malolos',
       'Norzagaray',
       'Obando',
       'Pandi',
