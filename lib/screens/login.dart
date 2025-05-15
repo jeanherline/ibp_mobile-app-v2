@@ -163,7 +163,7 @@ class _LoginState extends State<Login> {
               content: SizedBox(
                 width: screenWidth * 0.8,
                 child: const Text(
-                  'Your account is currently inactive. If you believe this is a mistake or would like to request reactivation, we can send a message to admin@ph-elsa.com on your behalf.',
+                  'Your account is currently deactivated. If you believe this is a mistake or would like to request reactivation, we can send a message to malolos@ph-elsa.com on your behalf.',
                   style: TextStyle(fontSize: 14, color: Colors.black87),
                 ),
               ),
@@ -323,27 +323,24 @@ class _LoginState extends State<Login> {
         .get();
 
     if (trustedDoc.exists) {
-      return true; // just return true, don't re-enter _continueStandardLogin
+      return true; // already trusted
     }
 
     bool isVerified = false;
 
+    // ✅ Send OTP first, then show modal after codeSent
     await auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 60),
+      forceResendingToken: currentResendToken,
       verificationCompleted: (PhoneAuthCredential credential) async {
         try {
-          UserCredential userCredential =
-              await FirebaseAuth.instance.signInWithCredential(credential);
-          User? signedInUser = userCredential.user;
-        } on FirebaseAuthException catch (e) {
-          if (e.code != 'provider-already-linked') {
-            _showDialog(
-                'Verification Failed', e.message ?? 'An error occurred.');
-            return;
-          }
+          await FirebaseAuth.instance.signInWithCredential(credential);
+          // Do NOT add to trusted device here. Only after checkbox is shown.
+          isVerified = true;
+        } catch (e) {
+          _showDialog('Auto-verification failed', e.toString());
         }
-
-        Navigator.of(context).pop(); // Close OTP dialog if open
       },
       verificationFailed: (FirebaseAuthException e) {
         _showDialog('Verification Failed', e.message ?? 'An error occurred.');
@@ -351,10 +348,13 @@ class _LoginState extends State<Login> {
       codeSent: (String verificationId, int? resendToken) async {
         currentVerificationId = verificationId;
         currentResendToken = resendToken;
+        // ✅ NOW show modal AFTER OTP is sent
         isVerified =
             await _showOTPVerificationDialog(verificationId, user, resendToken);
       },
-      codeAutoRetrievalTimeout: (String verificationId) {},
+      codeAutoRetrievalTimeout: (String verificationId) {
+        currentVerificationId = verificationId;
+      },
     );
 
     return isVerified;

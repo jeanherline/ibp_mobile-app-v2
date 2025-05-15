@@ -32,6 +32,8 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
   int _selectedRating = 0; // Store selected rating
   bool _isJoiningMeeting = false;
   bool _isSubmittingRequest = false;
+  List<XFile>? _selectedImages;
+  bool _isUploadingImages = false;
 
   @override
   void initState() {
@@ -638,12 +640,460 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   ],
                                 ),
                               ),
+                            const SizedBox(height: 5),
+                            if (appointmentDetails['appointmentDetails']
+                                        ['hasAdditionalDocs'] ==
+                                    'yes' ||
+                                appointmentDetails['appointmentDetails']
+                                            ['hasAdditionalDocs'] ==
+                                        'uploaded' &&
+                                    appointmentDetails['appointmentDetails']
+                                            ['additionalDocNote'] !=
+                                        null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Further documentation is needed. Please submit the following requested file(s):',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.black87,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      appointmentDetails['appointmentDetails']
+                                          ['additionalDocNote'],
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Color.fromARGB(255, 22, 101, 24),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        final picker = ImagePicker();
+                                        final pickedFiles =
+                                            await picker.pickMultiImage();
+                                        if (pickedFiles != null &&
+                                            pickedFiles.isNotEmpty) {
+                                          setState(() {
+                                            _selectedImages = pickedFiles;
+                                          });
+                                        }
+                                      },
+                                      icon: const Icon(Icons.photo_library,
+                                          color: Colors.white),
+                                      label: const Text('Upload Image(s)',
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.deepPurple,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedImages != null &&
+                                        _selectedImages!.isNotEmpty) ...[
+                                      const SizedBox(height: 14),
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.deepPurple
+                                                  .withOpacity(0.3)),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          color: Colors.deepPurple
+                                              .withOpacity(0.03),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Selected Image(s):',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            ..._selectedImages!
+                                                .asMap()
+                                                .entries
+                                                .map((entry) {
+                                              final index = entry.key;
+                                              final file = entry.value;
+
+                                              return Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  border: Border.all(
+                                                      color:
+                                                          Colors.grey.shade300),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        file.name,
+                                                        style: const TextStyle(
+                                                          color: Colors.black87,
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                          Icons.close,
+                                                          size: 18,
+                                                          color:
+                                                              Colors.redAccent),
+                                                      onPressed: () {
+                                                        setState(() {
+                                                          _selectedImages!
+                                                              .removeAt(index);
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ElevatedButton.icon(
+                                        onPressed: _isUploadingImages
+                                            ? null
+                                            : () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        16)),
+                                                    titlePadding:
+                                                        const EdgeInsets
+                                                            .fromLTRB(
+                                                            24, 24, 24, 10),
+                                                    contentPadding:
+                                                        const EdgeInsets
+                                                            .fromLTRB(
+                                                            24, 0, 24, 20),
+                                                    title: const Row(
+                                                      children: [
+                                                        Icon(Icons.upload_file,
+                                                            color: Colors
+                                                                .deepPurple),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          'Upload Confirmation',
+                                                          style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize: 18,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    content: const Text(
+                                                      'Are you sure you want to upload the selected image(s)? This action cannot be undone.',
+                                                      style: TextStyle(
+                                                          fontSize: 15),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                context),
+                                                        child: const Text(
+                                                            'Cancel'),
+                                                      ),
+                                                      ElevatedButton.icon(
+                                                        icon: const Icon(Icons
+                                                            .check_circle_outline),
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                          backgroundColor:
+                                                              Colors.green,
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal:
+                                                                      16,
+                                                                  vertical: 10),
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8)),
+                                                        ),
+                                                        onPressed: () async {
+                                                          Navigator.pop(
+                                                              context);
+                                                          setState(() =>
+                                                              _isUploadingImages =
+                                                                  true);
+
+                                                          final uid = FirebaseAuth
+                                                                  .instance
+                                                                  .currentUser
+                                                                  ?.uid ??
+                                                              'unknown';
+                                                          final fullName =
+                                                              userFullName
+                                                                  .replaceAll(
+                                                                      ' ', '_');
+
+                                                          try {
+                                                            for (final pickedFile
+                                                                in _selectedImages!) {
+                                                              final file = File(
+                                                                  pickedFile
+                                                                      .path);
+                                                              final fileName =
+                                                                  '${DateTime.now().millisecondsSinceEpoch}_${pickedFile.name}';
+                                                              final storageRef =
+                                                                  FirebaseStorage
+                                                                      .instance
+                                                                      .ref()
+                                                                      .child(
+                                                                          'konsulta_user_uploads/$uid/${widget.controlNumber}/additional_docs/$fileName');
+                                                              final uploadTask =
+                                                                  storageRef
+                                                                      .putFile(
+                                                                          file);
+                                                              final snapshot =
+                                                                  await uploadTask
+                                                                      .whenComplete(
+                                                                          () {});
+                                                              final fileUrl =
+                                                                  await snapshot
+                                                                      .ref
+                                                                      .getDownloadURL();
+
+                                                              await FirebaseFirestore
+                                                                  .instance
+                                                                  .collection(
+                                                                      'appointments')
+                                                                  .doc(widget
+                                                                      .controlNumber)
+                                                                  .update({
+                                                                'additionalDocs':
+                                                                    FieldValue
+                                                                        .arrayUnion([
+                                                                  {
+                                                                    'name':
+                                                                        pickedFile
+                                                                            .name,
+                                                                    'url':
+                                                                        fileUrl,
+                                                                    'uploadedAt':
+                                                                        Timestamp
+                                                                            .now(),
+                                                                    'note': appointmentDetails['appointmentDetails']
+                                                                            [
+                                                                            'additionalDocNote'] ??
+                                                                        '',
+                                                                  }
+                                                                ]),
+                                                                'appointmentDetails.hasAdditionalDocs':
+                                                                    'uploaded',
+                                                                'updatedTime':
+                                                                    Timestamp
+                                                                        .now(),
+                                                              });
+                                                            }
+
+                                                            setState(() {
+                                                              _selectedImages =
+                                                                  null;
+                                                            });
+
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                    'Image(s) uploaded successfully.'),
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .green,
+                                                              ),
+                                                            );
+                                                          } catch (e) {
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                    'Upload failed: $e'),
+                                                                backgroundColor:
+                                                                    Colors.red,
+                                                              ),
+                                                            );
+                                                          } finally {
+                                                            setState(() =>
+                                                                _isUploadingImages =
+                                                                    false);
+                                                          }
+                                                        },
+                                                        label: const Text(
+                                                            'Upload'),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                        icon: const Icon(Icons.upload_rounded,
+                                            color: Colors.white),
+                                        label: _isUploadingImages
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : const Text(
+                                                'Submit Selected Image(s)'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 18),
+                                    if (appointmentDetails['additionalDocs'] !=
+                                            null &&
+                                        appointmentDetails['additionalDocs']
+                                            .isNotEmpty) ...[
+                                      const Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Previously Uploaded:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ...(appointmentDetails['additionalDocs']
+                                              as List<dynamic>)
+                                          .where((doc) =>
+                                              doc['note'] != null &&
+                                              doc['note'] ==
+                                                  appointmentDetails[
+                                                          'appointmentDetails']
+                                                      ['additionalDocNote'])
+                                          .map<Widget>((doc) {
+                                        final fileName = doc['name'];
+                                        final fileUrl = doc['url'];
+                                        final uploadDate =
+                                            (doc['uploadedAt'] as Timestamp?)
+                                                ?.toDate();
+
+                                        return Container(
+                                          margin: const EdgeInsets.symmetric(
+                                              vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            border: Border.all(
+                                                color: Colors.grey.shade300),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (_) => Dialog(
+                                                        child:
+                                                            InteractiveViewer(
+                                                          child: Image.network(
+                                                              fileUrl),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text(
+                                                    fileName,
+                                                    style: const TextStyle(
+                                                      decoration: TextDecoration
+                                                          .underline,
+                                                      color: Colors.blue,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                  ],
+                                ),
+                              ),
 
                             const SizedBox(height: 5),
                             // Display the most recent reschedule reason
                             if (rescheduleHistory != null &&
-                                rescheduleHistory.isNotEmpty &&
-                                appointmentStatus != 'done')
+                                rescheduleHistory.isNotEmpty)
                               Builder(
                                 builder: (context) {
                                   final approvedHistory = rescheduleHistory
@@ -848,7 +1298,10 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
-                                if (appointmentStatus == 'done') ...[
+                                if (appointmentStatus == 'done' &&
+                                    appointmentDetails['appointmentDetails']
+                                            ['hasAdditionalDocs'] !=
+                                        'yes') ...[
                                   const Center(
                                     child: Padding(
                                       padding: EdgeInsets.all(16.0),
@@ -865,7 +1318,13 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                                 ],
                               ]
                             ],
-                            if (appointmentStatus == 'done') ...[
+                            if (appointmentStatus == 'done' &&
+                                (appointmentDetails['appointmentDetails']
+                                            ['hasAdditionalDocs'] !=
+                                        'yes' &&
+                                    appointmentDetails['appointmentDetails']
+                                            ['hasAdditionalDocs'] !=
+                                        'uploaded')) ...[
                               const SizedBox(height: 20),
                               const Text(
                                 'Maraming salamat sa inyong pagtangkilik.',
@@ -890,6 +1349,7 @@ class _AppointmentDetailsState extends State<AppointmentDetails> {
                               ),
                               _buildStarRating(),
                             ],
+                            const SizedBox(height: 20),
                             qrCodeUrl != null
                                 ? Image.network(qrCodeUrl)
                                 : const Center(

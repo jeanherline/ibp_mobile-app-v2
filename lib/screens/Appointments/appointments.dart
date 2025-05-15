@@ -332,6 +332,23 @@ class _AppointmentsListState extends State<AppointmentsList> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 8),
+
+                            if (appointment['appointmentDetails']
+                                    ?['hasAdditionalDocs'] ==
+                                'yes')
+                              const Padding(
+                                padding: EdgeInsets.only(top: 6.0),
+                                child: Text(
+                                  'Further documentation is needed. Please submit the requested files.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.green,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
 
                             const SizedBox(height: 8),
 

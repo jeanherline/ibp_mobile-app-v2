@@ -75,12 +75,11 @@ class _SettingsPageState extends State<SettingsPage> {
       User? user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
-        // Update user_status to 'inactive' in Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .update({
-          'user_status': 'inactive',
+          'user_status': 'deactivated',
         });
 
         // Sign the user out after deactivation
@@ -351,9 +350,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String _formatPhoneNumber(String rawPhone) {
     rawPhone = rawPhone.trim();
-    if (rawPhone.startsWith('+')) return rawPhone;
     if (rawPhone.startsWith('0')) return '+63${rawPhone.substring(1)}';
-    if (rawPhone.startsWith('9')) return '+63$rawPhone';
     return rawPhone; // fallback
   }
 
@@ -395,64 +392,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showPhoneNumberModal(BuildContext context) {
-    TextEditingController phoneNumberController =
-        TextEditingController(text: _phoneNumber ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Enter your phone number'),
-          content: TextField(
-            controller: phoneNumberController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Phone Number',
-              hintText: '+1234567890',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final phoneNumber = phoneNumberController.text.trim();
-                if (phoneNumber.isNotEmpty) {
-                  setState(() {
-                    _phoneNumber = phoneNumber;
-                  });
-
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(FirebaseAuth.instance.currentUser!.uid)
-                      .update({'phone': phoneNumber});
-
-                  Navigator.of(context).pop();
-
-                  await _verifyPhoneNumber(phoneNumber);
-
-                  setState(() {
-                    _is2FALoading = false;
-                  });
-                } else {
-                  setState(() {
-                    _is2FALoading = false;
-                  });
-                }
-              },
-              child: const Text('Verify'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _toggleTwoFactorAuth(bool value) async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -463,8 +402,16 @@ class _SettingsPageState extends State<SettingsPage> {
       try {
         if (value) {
           // If enabling 2FA and phone number is missing, prompt first
-          if (_phoneNumber == null || _phoneNumber!.isEmpty) {
-            _showPhoneNumberModal(context);
+          if (_phoneNumber == null ||
+              !(_phoneNumber!.startsWith('09') ||
+                  _phoneNumber!.startsWith('+639'))) {
+            setState(() => _is2FALoading = false);
+            _showDialog(
+              title: 'Missing Phone Number',
+              content:
+                  'To enable Two-Factor Authentication, please update your phone number in your profile settings first.',
+            );
+            return;
           } else {
             // Phone number exists, initiate verification
             await _verifyPhoneNumber(_phoneNumber!, resendToken: _resendToken);
